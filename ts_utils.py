@@ -3,12 +3,13 @@ import numpy as np
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
+
 def get_frequency(time_series):
     # Check if the index of the time series is a DateTimeIndex
     if isinstance(time_series.index, pd.DatetimeIndex):
         # Infer the frequency of the time series
         frequency = pd.infer_freq(time_series.index)
-        
+
         if frequency is None:
             return "Frequency not found"
         else:
@@ -16,19 +17,20 @@ def get_frequency(time_series):
     else:
         return "DateTimeIndex not found"
 
-def is_seasonal(time_series):
 
+def is_seasonal(time_series):
     # Decompose the time series
     decomposition = sm.tsa.seasonal_decompose(time_series)
-    
+
     # Retrieve the seasonal component
     seasonality = decomposition.seasonal
-    
+
     # Check if there is seasonality
     if seasonality is not None:
         return True
     else:
         return False
+
 
 def get_seasonal_period(time_series, plot=False):
     # Calculate the autocorrelation of the time series
@@ -38,20 +40,25 @@ def get_seasonal_period(time_series, plot=False):
         # Plot the autocorrelation
         plt.figure(figsize=(12, 6))
         plt.stem(range(len(autocorrelation)), autocorrelation)
-        plt.xlabel('Lag')
-        plt.ylabel('Autocorrelation')
-        plt.title('Autocorrelation Plot')
+        plt.xlabel("Lag")
+        plt.ylabel("Autocorrelation")
+        plt.title("Autocorrelation Plot")
         plt.show()
-    
+
     # Find the index of the highest peak after the first peak
     seasonal_period = 0
     highest_peak = 0
     for i in range(1, len(autocorrelation) - 1):
-        if autocorrelation[i] > autocorrelation[i-1] and autocorrelation[i] > autocorrelation[i+1] and autocorrelation[i] > highest_peak:
+        if (
+            autocorrelation[i] > autocorrelation[i - 1]
+            and autocorrelation[i] > autocorrelation[i + 1]
+            and autocorrelation[i] > highest_peak
+        ):
             highest_peak = autocorrelation[i]
             seasonal_period = i
-    
+
     return seasonal_period
+
 
 def calculate_smape(y_true, y_pred):
     """
@@ -62,13 +69,14 @@ def calculate_smape(y_true, y_pred):
     """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    
+
     numerator = np.abs(y_pred - y_true)
     denominator = (np.abs(y_true) + np.abs(y_pred)) / 2.0
-    
+
     smape = np.mean(numerator / denominator) * 100.0
-    
+
     return smape
+
 
 def calculate_mape(y_true, y_pred):
     """
@@ -79,11 +87,12 @@ def calculate_mape(y_true, y_pred):
     """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    
+
     percentage_errors = np.abs((y_true - y_pred) / y_true)
     mape = np.mean(percentage_errors) * 100.0
-    
+
     return mape
+
 
 def calculate_mase(y_true, y_pred, y_train):
     """
@@ -96,21 +105,21 @@ def calculate_mase(y_true, y_pred, y_train):
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     y_train = np.array(y_train)
-    
+
     training_error = np.mean(np.abs(y_train[1:] - y_train[:-1]))
     forecast_error = np.mean(np.abs(y_true - y_pred))
-    
+
     mase = forecast_error / training_error
-    
+
     return mase
+
 
 def plot_forecast(actual_data, forecast):
     # Plot the actual values and the forecasted values
-    plt.plot(actual_data.index, actual_data['value'], label='Actual')
-    plt.plot(forecast.index, forecast, label='Forecast')
-    plt.xlabel('Date')
+    plt.plot(actual_data.index, actual_data["value"], label="Actual")
+    plt.plot(forecast.index, forecast, label="Forecast")
+    plt.xlabel("Date")
     plt.xticks(rotation=45)
-    plt.ylabel('Value')
+    plt.ylabel("Value")
     plt.legend()
     plt.show()
-
