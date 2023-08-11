@@ -19,10 +19,14 @@ def main():
                         default=DATASET_PASSENGER)
     args = vars(parser.parse_args())
 
-    # Load dataset and create model
-    dataset = pd.read_csv(args['dataset'])
-    dataset = AbstractModel.prepare_dataset(dataset)
-    model = ModelFactory.create_model(dataset, model_name='autotheta')
+    # Simulate API Json payload and create model
+    api_json = {
+        'data': pd.read_csv(args['dataset']).to_json(),
+        'model': {'type': 'autotheta', 'score': ['smape', 'mape'], 'param': {}}
+    }
+    dataset = AbstractModel.prepare_dataset(pd.read_json(api_json['data']))
+    model_info = api_json['model']
+    model = ModelFactory.create_model(dataset, model_info=model_info)
 
     # Train model
     training_info = model.train(dataset)

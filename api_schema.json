@@ -1,0 +1,34 @@
+{
+  "data": [
+    [1, 10],
+    [2, 5],
+    [3, 7],
+    [4, 1],
+    [5, 10]
+  ],
+  "model": {
+    "type": "meta-lr",
+    "score": ["smape"],
+    "param": {
+      "models": [
+        {
+          "type": "autoarima",
+          "score": ["smape"],
+          "param": {}
+        },
+        {
+          "type": "autotheta",
+          "score": ["smape"],
+          "param": {}
+        }
+      ]
+    }
+  }
+},
+{
+  'model': 'SERIALIZED MODEL',
+  'type': 'autotheta',
+  'evaluation': {
+    'smape': 3.62,
+    'mape': 3.59}
+}

@@ -7,17 +7,22 @@ import pandas as pd
 from typing import Callable
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from ts_utils import get_seasonal_period, smape
+from ts_utils import get_seasonal_period, smape, mape
 from sklearn.model_selection import train_test_split
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
+SCORERS_DICT = {'smape': smape, 'mape': mape}
 
 
 class AbstractModel(ABC):
     """
     Abstract class used for both Base ("Sibyl") and Meta ("Pythia") models.
+
+    @param type: The type of the model, also used to build a new model from the Factory.
+    @param scorers: A list of scorers to use for evaluation.
     """
-    def __init__(self, scorers: METRIC_TYPE | list[METRIC_TYPE]):
+    def __init__(self, type: str, scorers: METRIC_TYPE | list[METRIC_TYPE]):
+        self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
 
     def score(self, y: np.ndarray|pd.Series, X: np.ndarray|pd.DataFrame=None) -> dict:
@@ -66,6 +71,7 @@ class AbstractModel(ABC):
         scores = self.score(y_test)
         self.plot_prediction(y_test)
         return {'model': self,
+                'type': self.type,
                 'evaluation': scores}  # 'stats': {'season_length': season_length}
 
     @abstractmethod
@@ -141,22 +147,56 @@ class ModelFactory():
     """
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     model_name: str='autotheta',
-                     scorers: METRIC_TYPE|list[METRIC_TYPE]=smape) -> AbstractModel:
+                     model_info: dict) -> AbstractModel:
         """
         Create a model of the given type.
 
-        @param model_name: The name of the model to create.
+        @param dataset: A dataframe containing the dataset with the time column as the first column
+        and the target column as the last column.
+        @param model_info: A dictionary containing the model type and any other information.
+        The format is the following:
+            {
+              "data": [
+                [1, 10],
+                [2, 5],
+                [3, 7],
+                [4, 1],
+                [5, 10]
+              ],
+              "model": {
+                "type": "meta-lr",
+                "score": ["smape"],
+                "param": {
+                  "models": [
+                    {
+                      "type": "autoarima",
+                      "score": ["smape"],
+                      "param": {}
+                    },
+                    {
+                      "type": "autotheta",
+                      "score": ["smape"],
+                      "param": {}
+                    }
+                  ]
+                }
+              }
+            }
         @return: A model of the given type.
         """
         season_length = get_seasonal_period(dataset)
-        if model_name == 'autotheta':
+        scorers = [SCORERS_DICT[s] for s in model_info['score']]
+        if model_info['type'] == 'autotheta':
             from statsforecast.models import AutoTheta
             statsmodel = AutoTheta(season_length=season_length)
-            return StatsforecastModel(model=statsmodel, scorers=scorers)
-        elif model_name == 'autoarima':
+            return StatsforecastModel(model=statsmodel,
+                                      scorers=scorers,
+                                      type='autotheta')
+        elif model_info['type'] == 'autoarima':
             from statsforecast.models import AutoARIMA
             statsmodel = AutoARIMA(season_length=season_length)
-            return StatsforecastModel(model=statsmodel, scorers=scorers)
+            return StatsforecastModel(model=statsmodel,
+                                      scorers=scorers,
+                                      type='autoarima')
         else:
-            raise ValueError(f'Unknown model type: {model_name}')
+            raise ValueError(f'Unknown model type: {model_info["score"]}')
