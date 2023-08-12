@@ -10,3 +10,15 @@
 #### Branch-specific Developments
 
 # MTR
+This code should be able to automatically fit different models on different datasets. 
+
+The main data structure will be a list of dictionaries, where each element of the list corresponds to a model-dataset pair and has the following format.
+
+{<br>
+    dataset_name:str,<br>
+    model_name:str,<br>
+    train_data:TimeSeries,<br>
+    test_data:TimeSeries,<br>
+    test_data_pred:TimeSeries,<br>
+    summary_errors:{'MAPE':float}<br>
+}
