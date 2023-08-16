@@ -7,8 +7,10 @@ import pandas as pd
 from typing import Callable
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from ts_utils import get_seasonal_period, smape, mape
+from .ts_utils import get_seasonal_period, smape, mape
 from sklearn.model_selection import train_test_split
+from typing import Union, List
+
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
 SCORERS_DICT = {'smape': smape, 'mape': mape}
@@ -21,11 +23,11 @@ class AbstractModel(ABC):
     @param type: The type of the model, also used to build a new model from the Factory.
     @param scorers: A list of scorers to use for evaluation.
     """
-    def __init__(self, type: str, scorers: METRIC_TYPE | list[METRIC_TYPE]):
+    def __init__(self, type: str, scorers: Union[METRIC_TYPE, List[METRIC_TYPE]]):
         self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
 
-    def score(self, y: np.ndarray|pd.Series, X: np.ndarray|pd.DataFrame=None) -> dict:
+    def score(self, y: Union[np.ndarray, pd.Series], X: Union[np.ndarray, pd.DataFrame]=None) -> dict:
         """
         Score the model on the given data.
 
@@ -36,7 +38,7 @@ class AbstractModel(ABC):
         y_pred = self.predict(len(y), X)
         return {scorer.__name__: scorer(y, y_pred) for scorer in self.scorers}
 
-    def plot_prediction(self, y: np.ndarray|pd.Series, X: np.ndarray|pd.DataFrame=None) -> None:
+    def plot_prediction(self, y: Union[np.ndarray, pd.Series], X: Union[np.ndarray, pd.DataFrame]=None) -> None:
         """
         Plot the actual and predicted values on a line chart.
 
@@ -55,7 +57,7 @@ class AbstractModel(ABC):
         plt.show()
 
     # TODO: Need to integrate exogenous variables X
-    def train(self, data: np.ndarray|pd.DataFrame, test_size=0.1) -> dict:
+    def train(self, data: Union[np.ndarray,pd.DataFrame], test_size=0.1) -> dict:
         """
         Train a model on the given data.
 
@@ -75,7 +77,7 @@ class AbstractModel(ABC):
                 'evaluation': scores}  # 'stats': {'season_length': season_length}
 
     @abstractmethod
-    def fit(self, y: np.ndarray|pd.Series, X: np.ndarray|pd.DataFrame=None) -> None:
+    def fit(self, y: Union[np.ndarray, pd.Series], X: Union[np.ndarray,pd.DataFrame]=None) -> None:
         """
         Fit the selected model.
 
@@ -86,7 +88,7 @@ class AbstractModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, lookforward: int=1, X: np.ndarray|pd.DataFrame=None) -> np.ndarray:
+    def predict(self, lookforward: int=1, X: Union[np.ndarray,pd.DataFrame]=None) -> np.ndarray:
         """
         Predict the next lookforward steps.
 
@@ -96,7 +98,7 @@ class AbstractModel(ABC):
         """
         pass
 
-    def _validate_input_array(self, X: np.ndarray|pd.DataFrame) -> np.ndarray:
+    def _validate_input_array(self, X: Union[np.ndarray,pd.DataFrame]) -> np.ndarray:
         """
         Ensure the input data is a numpy array to be used by statsforecast models.
 
@@ -131,12 +133,12 @@ class StatsforecastModel(AbstractModel):
         self.model = model
         super().__init__(*args, **kwargs)
 
-    def fit(self, y: np.ndarray|pd.Series, X: np.ndarray|pd.DataFrame=None) -> float:
+    def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray, pd.DataFrame]=None) -> float:
         y_val = self._validate_input_array(y)
         X_val = None if X is None else self._validate_input_array(X)
         self.model.fit(y_val, X_val)
 
-    def predict(self, lookforward: int=1, X: np.ndarray|pd.DataFrame=None) -> np.ndarray:
+    def predict(self, lookforward: int=1, X: Union[np.ndarray, pd.DataFrame]=None) -> np.ndarray:
         X_val = None if X is None else self._validate_input_array(X)
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
