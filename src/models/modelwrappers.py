@@ -149,7 +149,7 @@ class ModelFactory():
     """
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     model_info: dict) -> AbstractModel:
+                     model_info) -> AbstractModel:
         """
         Create a model of the given type.
 
@@ -187,18 +187,18 @@ class ModelFactory():
         @return: A model of the given type.
         """
         season_length = get_seasonal_period(dataset)
-        scorers = [SCORERS_DICT[s] for s in model_info['score']]
-        if model_info['type'] == 'autotheta':
+        scorers = [SCORERS_DICT[s] for s in model_info.score]
+        if model_info.type == 'autotheta':
             from statsforecast.models import AutoTheta
             statsmodel = AutoTheta(season_length=season_length)
             return StatsforecastModel(model=statsmodel,
                                       scorers=scorers,
                                       type='autotheta')
-        elif model_info['type'] == 'autoarima':
+        elif model_info.type == 'autoarima':
             from statsforecast.models import AutoARIMA
             statsmodel = AutoARIMA(season_length=season_length)
             return StatsforecastModel(model=statsmodel,
                                       scorers=scorers,
                                       type='autoarima')
         else:
-            raise ValueError(f'Unknown model type: {model_info["score"]}')
+            raise ValueError(f'Unknown model type: {model_info.score}')
