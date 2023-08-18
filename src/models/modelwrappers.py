@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from .ts_utils import get_seasonal_period, smape, mape
 from sklearn.model_selection import train_test_split
+from darts import TimeSeries
 from typing import Union, List
-
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
 SCORERS_DICT = {'smape': smape, 'mape': mape}
@@ -100,7 +100,7 @@ class AbstractModel(ABC):
 
     def _validate_input_array(self, X: Union[np.ndarray,pd.DataFrame]) -> np.ndarray:
         """
-        Ensure the input data is a numpy array to be used by statsforecast models.
+        Ensure the input data is a numpy array.
 
         @param X: Input data of shape (t, n).
         @return: The input data as a numpy array.
@@ -143,62 +143,122 @@ class StatsforecastModel(AbstractModel):
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
 
+class DartsModel(AbstractModel):
+    """
+    Wrapper for Darts models according to the AbstractModel interface.
+    """
+    def __init__(self, model, *args, **kwargs):
+        self.model = model
+        super().__init__(*args, **kwargs)
+
+    def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray,pd.DataFrame]=None) -> float:
+        # TODO: Implement exogenous variables
+        y_time_series = TimeSeries.from_values(y)
+        self.model.fit(y_time_series)
+
+    def predict(self, lookforward: int=1, X: Union[np.ndarray,pd.DataFrame]=None) -> np.ndarray:
+        # TODO: Implement exogenous variables
+        y_timeseries = self.model.predict(n=lookforward)
+        return y_timeseries.values().ravel()
+
+
+class MetaModelWA(AbstractModel):
+    """
+    MetaModel using the weighted average.
+    """
+    def __init__(self, models, *args, **kwargs):
+        self.base_models = models
+        self.models_weights = {}
+        super().__init__(*args, **kwargs)
+
+    def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray,pd.DataFrame]=None) -> float:
+        # TODO: Implement exogenous variables
+        y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+        main_scorer = self.scorers[0]
+        base_scores = {}
+        for model in self.base_models:
+            print(f"Fitting base model: {model.type}")
+            model.fit(y_base)
+            y_pred = model.predict(len(y_meta))
+            base_scores[model.type] = main_scorer(y_meta, y_pred)
+            print(f"{main_scorer.__name__} test score: {base_scores[model.type]}")
+            model.fit(y)
+        total_score = sum(base_scores.values())
+        self.models_weights = {model.type: base_scores[model.type] / total_score
+                               for model in self.base_models}
+
+    def predict(self, lookforward: int=1, X: Union[np.ndarray,pd.DataFrame]=None) -> np.ndarray:
+        # TODO: Implement exogenous variables
+        base_predictions = {model.type: model.predict(lookforward) for model in self.base_models}
+        meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
+                                for model in self.base_models])
+        return meta_predictions
+
+
 class ModelFactory():
     """
     Factory class for creating models.
     """
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     model_info) -> AbstractModel:
+                     model_type: str = 'darts_autotheta',
+                     model_params: dict = None,
+                     scorers: Union[str, List[str]] = 'mape') -> AbstractModel:
         """
         Create a model of the given type.
 
         @param dataset: A dataframe containing the dataset with the time column as the first column
         and the target column as the last column.
-        @param model_info: A dictionary containing the model type and any other information.
-        The format is the following:
-            {
-              "data": [
-                [1, 10],
-                [2, 5],
-                [3, 7],
-                [4, 1],
-                [5, 10]
-              ],
-              "model": {
-                "type": "meta-lr",
-                "score": ["smape"],
-                "param": {
-                  "models": [
-                    {
-                      "type": "autoarima",
-                      "score": ["smape"],
-                      "param": {}
-                    },
-                    {
-                      "type": "autotheta",
-                      "score": ["smape"],
-                      "param": {}
-                    }
-                  ]
-                }
-              }
-            }
+        @param model_type: The type of the model to create. Defaults to 'darts_autotheta' if None.
+        @param model_params: A dictionary containing the model parameters if necessary.
+        @param scorers: A list of scorers to use for evaluation. Defaults to MAPE if None.
         @return: A model of the given type.
         """
+        scorer_func = [SCORERS_DICT[s] for s in scorers] if isinstance(scorers, list) \
+            else SCORERS_DICT[scorers]
         season_length = get_seasonal_period(dataset)
-        scorers = [SCORERS_DICT[s] for s in model_info.score]
-        if model_info.type == 'autotheta':
+        if model_type == 'stats_autotheta':
             from statsforecast.models import AutoTheta
-            statsmodel = AutoTheta(season_length=season_length)
-            return StatsforecastModel(model=statsmodel,
-                                      scorers=scorers,
-                                      type='autotheta')
-        elif model_info.type == 'autoarima':
+            model = StatsforecastModel(model=AutoTheta(season_length=season_length),
+                                       scorers=scorer_func,
+                                       type=model_type)
+        elif model_type == 'stats_autoarima':
             from statsforecast.models import AutoARIMA
-            statsmodel = AutoARIMA(season_length=season_length)
-            return StatsforecastModel(model=statsmodel,
-                                      scorers=scorers,
-                                      type='autoarima')
+            model = StatsforecastModel(model=AutoARIMA(season_length=season_length),
+                                       scorers=scorer_func,
+                                       type=model_type)
+        elif model_type == 'stats_autoets':
+            from statsforecast.models import AutoETS
+            model = StatsforecastModel(model=AutoETS(season_length=season_length),
+                                       scorers=scorer_func,
+                                       type=model_type)
+        elif model_type == 'darts_autotheta':
+            from darts.models import StatsForecastAutoTheta
+            model = DartsModel(model=StatsForecastAutoTheta(season_length=season_length),
+                               scorers=scorer_func,
+                               type=model_type)
+        elif model_type == 'darts_autoarima':
+            from darts.models import StatsForecastAutoARIMA
+            model = DartsModel(model=StatsForecastAutoARIMA(season_length=season_length),
+                               scorers=scorer_func,
+                               type=model_type)
+        elif model_type == 'darts_autoets':
+            from darts.models import StatsForecastAutoETS
+            model = DartsModel(model=StatsForecastAutoETS(season_length=season_length),
+                               scorers=scorer_func,
+                               type=model_type)
+        elif model_type == 'meta_wa':
+            # TODO: Pass also base models parameters
+            if model_params is None:
+                base_models = [ModelFactory.create_model(dataset, model_type=m)
+                               for m in ['darts_autoets', 'darts_autoarima', 'darts_autotheta']]
+            else:
+                base_models = [ModelFactory.create_model(dataset, base_model["type"])
+                               for base_model in model_params['base_models']]
+            model = MetaModelWA(models=base_models,
+                                scorers=scorer_func,
+                                type=model_type)
         else:
-            raise ValueError(f'Unknown model type: {model_info.score}')
+            raise ValueError(f'Unknown model type: {model_type}')
+
+        return model

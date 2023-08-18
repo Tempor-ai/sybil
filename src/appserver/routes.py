@@ -22,12 +22,12 @@ class Model(BaseModel):
 
 
 class Parameters(BaseModel):
-    models: List[Model]
+    base_models: Union[List[Model], None] = None
 
 
 class Model(BaseModel):
     type: str
-    score: List[str]
+    score: Union[List[str], None] = None
     param: Union[Parameters, None] = None
 
 
@@ -57,7 +57,10 @@ async def train(train_request: TrainRequest):
 
     dataset = AbstractModel.prepare_dataset(pd.DataFrame(train_request.data))
     model_info = train_request.model
-    model = ModelFactory.create_model(dataset, model_info=model_info)
+    model = ModelFactory.create_model(dataset,
+                                      model_type=model_info.type,
+                                      scorers=model_info.score,
+                                      model_params=model_info.param)
 
     # Train model
     training_info = model.train(dataset)
@@ -76,13 +79,17 @@ class ForecastRequest(BaseModel):
 
 
 class ForecastResponse(BaseModel):
-    data: List[List[Union[int, str, float]]]
+    data: List[Union[List[Union[int, str, float]], float]]
 
 
 @router.post('/forecast')
 async def forecast(forecast_request: ForecastRequest):
 
     model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
-    output = model.predict(np.array(forecast_request.predicts))
+
+    num_steps = len(forecast_request.predicts)
+    output = model.predict(lookforward=num_steps)
 
     logger.error(output)
+
+    return ForecastResponse(data=output)
