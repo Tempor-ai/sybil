@@ -14,15 +14,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# Train response
-class Model(BaseModel):
-    type: str
-    score: list
-    param: None
-
-
 class Parameters(BaseModel):
-    base_models: Union[List[Model], None] = None
+    base_models: Union[List['Model'], None] = None
 
 
 class Model(BaseModel):
