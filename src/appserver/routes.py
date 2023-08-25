@@ -30,14 +30,14 @@ class TrainRequest(BaseModel):
 
 
 class Evaluation(BaseModel):
-    smape: float
-    mape: float
+    type: str
+    value: float
 
 
 class TrainResponse(BaseModel):
     model: str
     type: str
-    evaluation: Evaluation
+    evaluation: Union[List[Evaluation], None] = None
 
 
 @router.get('/')
@@ -48,8 +48,19 @@ def index():
 @router.post('/train')
 async def train(train_request: TrainRequest):
 
+    logger.debug("TrainRequest: %s", train_request)
+
     dataset = AbstractModel.prepare_dataset(pd.DataFrame(train_request.data))
+
+    # Get optional user specs
     model_info = train_request.model
+
+    # Set defaults if model field is not included in request
+    if model_info is None:
+        model_info = Model(type="meta_wa",
+                           score=["smape", "mape"])
+
+    # Create model objects from the spec user passed in
     model = ModelFactory.create_model(dataset,
                                       model_type=model_info.type,
                                       scorers=model_info.score,
@@ -57,13 +68,24 @@ async def train(train_request: TrainRequest):
 
     # Train model
     training_info = model.train(dataset)
+
+    # Serialize, compress, and finally encode model in base64 ASCII, so it can be sent in JSON
     output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model'])))
+
+    # Build evaluation JSON for response
+    evaluation = []
+    for evaluation_type in training_info["evaluation"]:
+        evaluation.append(Evaluation(type=evaluation_type,
+                                     value=training_info["evaluation"][evaluation_type]
+                                     ))
+    if len(evaluation) == 0:
+        evaluation = None
 
     # There is dynamacism in the evaluation field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
-                         evaluation=Evaluation(mape=training_info["evaluation"]["mape"],
-                                               smape=training_info["evaluation"]["smape"]))
+                         evaluation=evaluation
+                         )
 
 
 class ForecastRequest(BaseModel):
@@ -78,11 +100,13 @@ class ForecastResponse(BaseModel):
 @router.post('/forecast')
 async def forecast(forecast_request: ForecastRequest):
 
+    logger.debug("ForecastRequest: %s", forecast_request)
+
+    # Decode model from base64 ASCII, decompress, and final deserialize
     model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
 
+    # TODO Model currently does not support dates, array is converted into number of steps
     num_steps = len(forecast_request.predicts)
     output = model.predict(lookforward=num_steps)
-
-    logger.error(output)
 
     return ForecastResponse(data=output)
