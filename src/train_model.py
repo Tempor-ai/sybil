@@ -27,8 +27,8 @@ def main():
     # Read the dataset path from the command line
     parser = argparse.ArgumentParser(description='Send /train request to Sybil from file, receive response and place it in file')
     parser.add_argument('-d', '--dataset', type=str, help='Path or url to the dataset csv file.', default=DATASET_PASSENGER)
-    parser.add_argument('-H', '--host', type=str, help='Domain or IP address of the Sybil gateway', default="localhost")
-    parser.add_argument('-p', '--port', type=int, help='TCP/IP port of Sybil gateway', default=8000)
+    parser.add_argument('-H', '--host', type=str, help='Domain or IP address of the Sybil gateway', default="3.92.34.145")
+    parser.add_argument('-p', '--port', type=int, help='TCP/IP port of Sybil gateway', default=443)
     parser.add_argument('-f', '--outfile', type=str, help='Output file for JSON response', default=OUT_FILE)
     parser.add_argument('-n', '--notsecure', action='store_true', help='If passed, protocol will be swapped to HTTP', default=False)
     parser.add_argument('-m', '--model_request', type=str, help='model field of the JSON request', default=DEFAULT_MODEL_REQUEST)
@@ -76,8 +76,9 @@ def main():
     url = "%s://%s:%s/train" % (protocol, args["host"], args["port"])
     logger.info("Calling RPC endpoint %s", url)
 
+    # TODO gain a accredited cert and remove verify=False
     # Call endpoint, receive response JSON, write to output file
-    response = requests.post(url, json=api_json)
+    response = requests.post(url, json=api_json, verify=False)
 
     json_out = json.dumps(response.json(), indent=4)
     logger.info("Response JSON, %s", json_out)
