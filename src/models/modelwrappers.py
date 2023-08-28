@@ -7,13 +7,17 @@ import pandas as pd
 from typing import Callable
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from .ts_utils import get_seasonal_period, smape, mape
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from .ts_utils import get_seasonal_period, smape, mape
 from darts import TimeSeries
 from typing import Union, List
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
 SCORERS_DICT = {'smape': smape, 'mape': mape}
+DEFAULT_BASE_MODELS = [{'type': 'darts_autoets'},
+                       {'type': 'darts_autoarima'},
+                       {'type': 'darts_autotheta'}]
 
 
 class AbstractModel(ABC):
@@ -35,7 +39,7 @@ class AbstractModel(ABC):
         @param X: Future exogenous variables of shape (t, n).
         @return: A dictionary of scores.
         """
-        y_pred = self.predict(len(y), X)
+        y_pred = self.predict(lookforward=len(y), X=X)
         return {scorer.__name__: scorer(y, y_pred) for scorer in self.scorers}
 
     def plot_prediction(self, y: Union[np.ndarray, pd.Series], X: Union[np.ndarray, pd.DataFrame]=None) -> None:
@@ -49,7 +53,7 @@ class AbstractModel(ABC):
         index = range(len(y)) if isinstance(y, np.ndarray) else y.index
         plt.plot(index, y, label='Actual')
         y_pred = self.predict(lookforward=len(y), X=X)
-        plt.plot(index, y_pred, label='Model')
+        plt.plot(index, y_pred, label=self.type)
         plt.xlabel('Time')
         plt.xticks(rotation=45)
         plt.ylabel('Value')
@@ -67,11 +71,20 @@ class AbstractModel(ABC):
         @param test_size: The ratio of data to use for testing.
         @return: A dictionary containing the trained model and any other information.
         """
-        y = self._validate_input_array(data)[:, -1]
-        y_train, y_test = train_test_split(y, test_size=test_size, shuffle=False)
-        self.fit(y_train)
-        scores = self.score(y_test)
-        self.plot_prediction(y_test)
+        val_data = self._validate_input_array(data)[:, 1:]  # Remove time column
+        if val_data.shape[1] > 1:
+            X_train, X_test, y_train, y_test = train_test_split(val_data[:, :-1],
+                                                                val_data[:, -1],
+                                                                test_size=test_size,
+                                                                shuffle=False)
+        else:
+            y_train, y_test = train_test_split(val_data[:, -1],
+                                               test_size=test_size,
+                                               shuffle=False)
+            x_train, x_test = None, None
+        self.fit(y=y_train, X=x_train)
+        scores = self.score(y_test, X=x_test)
+        self.plot_prediction(y_test, X=x_test)
         return {'model': self,
                 'type': self.type,
                 'evaluation': scores}  # 'stats': {'season_length': season_length}
@@ -122,10 +135,10 @@ class AbstractModel(ABC):
         clean_dataset = dataset.rename(columns={time_col_name: 'datetime',
                                                 value_col_name: 'value'})
         clean_dataset['datetime'] = pd.to_datetime(clean_dataset['datetime'])
-        return clean_dataset.set_index('datetime')
+        return clean_dataset
 
 
-class StatsforecastModel(AbstractModel):
+class StatsforecastWrapper(AbstractModel):
     """
     Wrapper for statsforecast models according to the AbstractModel interface.
     """
@@ -136,14 +149,14 @@ class StatsforecastModel(AbstractModel):
     def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray, pd.DataFrame]=None) -> float:
         y_val = self._validate_input_array(y)
         X_val = None if X is None else self._validate_input_array(X)
-        self.model.fit(y_val, X_val)
+        self.model.fit(y=y_val, X=X_val)
 
     def predict(self, lookforward: int=1, X: Union[np.ndarray, pd.DataFrame]=None) -> np.ndarray:
         X_val = None if X is None else self._validate_input_array(X)
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
 
-class DartsModel(AbstractModel):
+class DartsWrapper(AbstractModel):
     """
     Wrapper for Darts models according to the AbstractModel interface.
     """
@@ -154,11 +167,19 @@ class DartsModel(AbstractModel):
     def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray,pd.DataFrame]=None) -> float:
         # TODO: Implement exogenous variables
         y_time_series = TimeSeries.from_values(y)
-        self.model.fit(y_time_series)
+        if has_argument(self.model.fit, 'future_covariates'):
+            X_time_series = None if X is None else TimeSeries.from_values(X)
+            self.model.fit(y_time_series, future_covariates=X_time_series)
+        else:
+            self.model.fit(y_time_series)
 
     def predict(self, lookforward: int=1, X: Union[np.ndarray,pd.DataFrame]=None) -> np.ndarray:
         # TODO: Implement exogenous variables
-        y_timeseries = self.model.predict(n=lookforward)
+        if has_argument(self.model.fit, 'future_covariates'):
+            X_time_series = None if X is None else TimeSeries.from_values(X)
+            y_timeseries = self.model.predict(n=lookforward, future_covariates=X_time_series)
+        else:
+            y_timeseries = self.model.predict(n=lookforward)
         return y_timeseries.values().ravel()
 
 
@@ -195,13 +216,50 @@ class MetaModelWA(AbstractModel):
         return meta_predictions
 
 
+class MetaModelLR(AbstractModel):
+    """
+    MetaModel using Linear Regression to combine base models.
+    """
+    def __init__(self, models, *args, **kwargs):
+        self.base_models = models
+        self.regressor = LinearRegression()
+        super().__init__(*args, **kwargs)
+
+    def fit(self, y: Union[np.ndarray,pd.Series], X: Union[np.ndarray,pd.DataFrame]=None) -> None:
+        # TODO: Implement exogenous variables
+        if X is None:
+            y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+            X_base, X_meta = None, None
+        else:
+            y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
+        base_predictions = []
+
+        for model in self.base_models:
+            print(f"Fitting base model: {model.type}")
+            model.fit(y_base, X=X_base)
+            y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
+            base_predictions.append(y_pred)
+            model.fit(y)  # Refit with full data
+
+        # Use linear regression to learn the weights
+        base_predictions = np.column_stack(base_predictions)
+        self.regressor.fit(base_predictions, y_meta)
+
+    def predict(self, lookforward: int=1, X: Union[np.ndarray,pd.DataFrame]=None) -> np.ndarray:
+        # TODO: Implement exogenous variables
+        base_predictions = [model.predict(lookforward) for model in self.base_models]
+        X_pred = np.column_stack(base_predictions)
+        meta_predictions = self.regressor.predict(X_pred)
+        return meta_predictions.ravel()
+
+
 class ModelFactory():
     """
     Factory class for creating models.
     """
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     model_type: str = 'darts_autotheta',
+                     type: str = 'darts_autotheta',
                      model_params: dict = None,
                      scorers: Union[str, List[str]] = 'mape') -> AbstractModel:
         """
@@ -209,56 +267,62 @@ class ModelFactory():
 
         @param dataset: A dataframe containing the dataset with the time column as the first column
         and the target column as the last column.
-        @param model_type: The type of the model to create. Defaults to 'darts_autotheta' if None.
+        @param type: The type of the model to create. Defaults to 'darts_autotheta' if None.
         @param model_params: A dictionary containing the model parameters if necessary.
         @param scorers: A list of scorers to use for evaluation. Defaults to MAPE if None.
         @return: A model of the given type.
         """
         scorer_func = [SCORERS_DICT[s] for s in scorers] if isinstance(scorers, list) \
             else SCORERS_DICT[scorers]
-        season_length = get_seasonal_period(dataset)
-        if model_type == 'stats_autotheta':
+        season_length = get_seasonal_period(dataset["value"])
+        if type == 'stats_autotheta':
             from statsforecast.models import AutoTheta
-            model = StatsforecastModel(model=AutoTheta(season_length=season_length),
-                                       scorers=scorer_func,
-                                       type=model_type)
-        elif model_type == 'stats_autoarima':
+            model = StatsforecastWrapper(model=AutoTheta(season_length=season_length),
+                                         scorers=scorer_func,
+                                         type=type)
+        elif type == 'stats_autoarima':
             from statsforecast.models import AutoARIMA
-            model = StatsforecastModel(model=AutoARIMA(season_length=season_length),
-                                       scorers=scorer_func,
-                                       type=model_type)
-        elif model_type == 'stats_autoets':
+            model = StatsforecastWrapper(model=AutoARIMA(season_length=season_length),
+                                         scorers=scorer_func,
+                                         type=type)
+        elif type == 'stats_autoets':
             from statsforecast.models import AutoETS
-            model = StatsforecastModel(model=AutoETS(season_length=season_length),
-                                       scorers=scorer_func,
-                                       type=model_type)
-        elif model_type == 'darts_autotheta':
+            model = StatsforecastWrapper(model=AutoETS(season_length=season_length),
+                                         scorers=scorer_func,
+                                         type=type)
+        elif type == 'darts_autotheta':
             from darts.models import StatsForecastAutoTheta
-            model = DartsModel(model=StatsForecastAutoTheta(season_length=season_length),
-                               scorers=scorer_func,
-                               type=model_type)
-        elif model_type == 'darts_autoarima':
+            model = DartsWrapper(model=StatsForecastAutoTheta(season_length=season_length),
+                                 scorers=scorer_func,
+                                 type=type)
+        elif type == 'darts_autoarima':
             from darts.models import StatsForecastAutoARIMA
-            model = DartsModel(model=StatsForecastAutoARIMA(season_length=season_length),
-                               scorers=scorer_func,
-                               type=model_type)
-        elif model_type == 'darts_autoets':
+            model = DartsWrapper(model=StatsForecastAutoARIMA(season_length=season_length),
+                                 scorers=scorer_func,
+                                 type=type)
+        elif type == 'darts_autoets':
             from darts.models import StatsForecastAutoETS
-            model = DartsModel(model=StatsForecastAutoETS(season_length=season_length),
-                               scorers=scorer_func,
-                               type=model_type)
-        elif model_type == 'meta_wa':
+            model = DartsWrapper(model=StatsForecastAutoETS(season_length=season_length),
+                                 scorers=scorer_func,
+                                 type=type)
+        elif "meta_" in type:
             # TODO: Pass also base models parameters
-            if model_params is None:
-                base_models = [ModelFactory.create_model(dataset, model_type=m)
-                               for m in ['darts_autoets', 'darts_autoarima', 'darts_autotheta']]
-            else:
-                base_models = [ModelFactory.create_model(dataset, base_model["type"])
-                               for base_model in model_params['base_models']]
-            model = MetaModelWA(models=base_models,
-                                scorers=scorer_func,
-                                type=model_type)
+            base_models_kwargs = DEFAULT_BASE_MODELS if model_params is None else model_params['base_models']
+            base_models = [ModelFactory.create_model(dataset, **model_kwargs)
+                           for model_kwargs in base_models_kwargs]
+            if type == 'meta_wa':
+                model = MetaModelWA(models=base_models,
+                                    scorers=scorer_func,
+                                    type=type)
+            elif type == 'meta_lr':
+                model = MetaModelLR(models=base_models,
+                                    scorers=scorer_func,
+                                    type=type)
         else:
-            raise ValueError(f'Unknown model type: {model_type}')
+            raise ValueError(f'Unknown model type: {type}')
 
         return model
+
+
+def has_argument(func, arg_name):
+    return arg_name in func.__code__.co_varnames

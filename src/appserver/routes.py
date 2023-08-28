@@ -62,7 +62,7 @@ async def train(train_request: TrainRequest):
 
     # Create model objects from the spec user passed in
     model = ModelFactory.create_model(dataset,
-                                      model_type=model_info.type,
+                                      type=model_info.type,
                                       scorers=model_info.score,
                                       model_params=model_info.param)
 
