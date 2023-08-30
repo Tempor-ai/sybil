@@ -6,7 +6,7 @@ Using the Statsforecast wrapper to train a base model and predict on a dataset.
 import pickle
 import argparse
 import pandas as pd
-from src.models.modelwrappers import AbstractModel, ModelFactory
+from src.models.modelfactory import ModelFactory
 
 DATASET_PASSENGER = "datasets/retail/air_passengers.csv"
 
@@ -23,20 +23,21 @@ def main():
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
         #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape'], 'param': {}},
-        'model': {'type': 'meta_lr',
-                  'score': ['smape', 'mape'],
-                  'param': {'base_models': [
-                      {'type': 'darts_autoarima'},
-                      {'type': 'darts_autotheta'},
-                      {'type': 'darts_autoets'},
+        'model': {'type': 'test', 'score': ['smape', 'mape'], 'param': {}}
+        #'model': {'type': 'meta_lr',
+        #          'score': ['smape', 'mape'],
+        #          'param': {'base_models': [
+        #              {'type': 'darts_autoarima'},
+        #              {'type': 'darts_autotheta'},
+        #              {'type': 'darts_autoets'},
         #              {'type': 'stats_autotheta'},
         #              {'type': 'stats_autoets'},
         #              {'type': 'stats_autoarima'}
-                  ]}}
+        #          ]}}
     }
 
     # Prepare the dataset and create the model
-    dataset = AbstractModel.prepare_dataset(pd.read_json(api_json['data']))
+    dataset = ModelFactory.prepare_dataset(pd.read_json(api_json['data']))
     model = ModelFactory.create_model(dataset,
                                       type=api_json['model']['type'],
                                       scorers=api_json['model']['score'],
