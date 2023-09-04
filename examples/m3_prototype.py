@@ -38,7 +38,7 @@ def main():
     model = ModelFactory.create_model(dataset,
                                       type=api_json['model']['type'],
                                       scorers=api_json['model']['score'],
-                                      model_params=api_json['model']['param'])
+                                      params=api_json['model']['param'])
 
     # Train the model
     training_info = model.train(dataset)

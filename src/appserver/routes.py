@@ -64,7 +64,7 @@ async def train(train_request: TrainRequest):
     model = ModelFactory.create_model(dataset,
                                       type=model_info.type,
                                       scorers=model_info.score,
-                                      model_params=model_info.param)
+                                      params=model_info.param)
 
     # Train model
     training_info = model.train(dataset)

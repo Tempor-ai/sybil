@@ -13,8 +13,8 @@ class Pipeline(AbstractModel):
     """
     Pipeline of transformers and models.
     """
-    def __init__(self, transformers: List[AbstractPreprocessor], model: AbstractModel, *args, **kwargs):
-        self.transformers = transformers
+    def __init__(self, processors: List[AbstractPreprocessor], model: AbstractModel, *args, **kwargs):
+        self.transformers = processors
         self.model = model
         super().__init__(*args, **kwargs)
 

@@ -22,18 +22,20 @@ def main():
     # Simulate API json payload received from the user
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
-        #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape'], 'param': {}},
-        #'model': {'type': 'test', 'score': ['smape', 'mape'], 'param': {}}
-        'model': {'type': 'meta_wa',
+        #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape']},
+        'model': {'type': 'meta_lr',
                   'score': ['smape', 'mape'],
-                  'param': {
+                  'params': {
+                      'preprocessors': [
+                          {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+                          {'type': 'minmaxscaler'}
+                      ],
                       'base_models': [
                           {'type': 'stats_autotheta'},
                           {'type': 'darts_autoarima'},
                           {'type': 'darts_autotheta'},
                           {'type': 'darts_autoets'}
-        ]
-    }}
+        ]}}
     }
 
     # Prepare the dataset and create the model
@@ -41,7 +43,7 @@ def main():
     model = ModelFactory.create_model(dataset,
                                       type=api_json['model']['type'],
                                       scorers=api_json['model']['score'],
-                                      model_params=api_json['model']['param'])
+                                      params=api_json['model']['params'])
 
     # Train the model
     training_info = model.train(dataset)
