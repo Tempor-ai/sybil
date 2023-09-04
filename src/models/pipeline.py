@@ -5,7 +5,7 @@ Pipeline of transformers and models.
 import numpy as np
 import pandas as pd
 from .modelwrappers import AbstractModel
-from .transformers import AbstractTransformer
+from .preprocessor import AbstractPreprocessor
 from typing import Union, List
 
 
@@ -13,7 +13,7 @@ class Pipeline(AbstractModel):
     """
     Pipeline of transformers and models.
     """
-    def __init__(self, transformers: List[AbstractTransformer], model: AbstractModel, *args, **kwargs):
+    def __init__(self, transformers: List[AbstractPreprocessor], model: AbstractModel, *args, **kwargs):
         self.transformers = transformers
         self.model = model
         super().__init__(*args, **kwargs)

@@ -8,15 +8,15 @@ from typing import Union
 from abc import ABC, abstractmethod
 
 
-class AbstractTransformer(ABC):
+class AbstractPreprocessor(ABC):
     """
-    Abstract class used for defining Transformers interface.
+    Abstract class used for defining Preprocessor interface.
     """
 
     @abstractmethod
     def fit(self, X: Union[np.ndarray, pd.Series, pd.DataFrame]) -> None:
         """
-        Fit the selected transformer.
+        Fit the selected processor.
 
         @param X: Generic input data of shape (t, n).
         @return: None
@@ -26,7 +26,7 @@ class AbstractTransformer(ABC):
     @abstractmethod
     def transform(self, X: Union[np.ndarray, pd.Series, pd.DataFrame]) -> np.ndarray:
         """
-        Transforms the input data according to the transformer logic.
+        Transforms the input data according to the preprocessor logic.
 
         @param X: Generic input data of shape (t, n).
         @return: Transformed data.
@@ -35,7 +35,7 @@ class AbstractTransformer(ABC):
 
     def fit_transform(self, X: Union[np.ndarray, pd.Series, pd.DataFrame]) -> None:
         """
-        Fit and transform the input data according to the transformer logic.
+        Fit and transform the input data according to the preprocessor logic.
 
         @param X: Generic input data of shape (t, n).
         @return: Transformed data.
@@ -46,14 +46,14 @@ class AbstractTransformer(ABC):
     @abstractmethod
     def inverse_transform(self, X: np.ndarray) -> np.ndarray:
         """
-        Inverse transform the input data according to the transformer logic.
+        Inverse transform the input data according to the preprocessor logic.
         :param X: Generic input data of shape (t, n).
         :return: Data in the original format.
         """
         pass
 
 
-class MinMaxScaler(AbstractTransformer):
+class MinMaxScaler(AbstractPreprocessor):
     """
     MinMaxScaler transformer.
     :param min: Minimum value of the range.

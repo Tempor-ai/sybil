@@ -6,7 +6,7 @@ import pandas as pd
 from typing import Union, List
 
 from .ts_utils import get_seasonal_period, smape, mape
-from .transformers import MinMaxScaler
+from .preprocessor import MinMaxScaler
 from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR
 from .pipeline import Pipeline
 

@@ -66,7 +66,8 @@ class AbstractModel(ABC):
         @param test_size: The ratio of data to use for testing.
         @return: A dictionary containing the trained model and any other information.
         """
-        val_data = self._validate_input_array(data)[:, 1:]  # Remove time column
+        val_data = data.to_numpy() if isinstance(data, pd.DataFrame) else data
+        val_data = self._validate_input_array(val_data[:, 1:])  # Remove time column
         if val_data.shape[1] > 1:
             X_train, X_test, y_train, y_test = train_test_split(val_data[:, :-1],
                                                                 val_data[:, -1],
@@ -113,7 +114,8 @@ class AbstractModel(ABC):
         @param X: Input data of shape (t, n).
         @return: The input data as a numpy array.
         """
-        return X if isinstance(X, np.ndarray) else X.to_numpy()
+        val_array = X if isinstance(X, np.ndarray) else X.to_numpy()
+        return val_array.astype(float)
 
 
 class StatsforecastWrapper(AbstractModel):

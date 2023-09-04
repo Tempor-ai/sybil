@@ -23,17 +23,17 @@ def main():
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
         #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape'], 'param': {}},
-        'model': {'type': 'test', 'score': ['smape', 'mape'], 'param': {}}
-        #'model': {'type': 'meta_lr',
-        #          'score': ['smape', 'mape'],
-        #          'param': {'base_models': [
-        #              {'type': 'darts_autoarima'},
-        #              {'type': 'darts_autotheta'},
-        #              {'type': 'darts_autoets'},
-        #              {'type': 'stats_autotheta'},
-        #              {'type': 'stats_autoets'},
-        #              {'type': 'stats_autoarima'}
-        #          ]}}
+        #'model': {'type': 'test', 'score': ['smape', 'mape'], 'param': {}}
+        'model': {'type': 'meta_wa',
+                  'score': ['smape', 'mape'],
+                  'param': {
+                      'base_models': [
+                          {'type': 'stats_autotheta'},
+                          {'type': 'darts_autoarima'},
+                          {'type': 'darts_autotheta'},
+                          {'type': 'darts_autoets'}
+        ]
+    }}
     }
 
     # Prepare the dataset and create the model
