@@ -48,27 +48,23 @@ def index():
 
 @router.post('/train')
 async def train(train_request: TrainRequest):
-
     logger.debug("TrainRequest: %s", train_request)
-
     dataset = AbstractModel.prepare_dataset(pd.DataFrame(train_request.data))
 
     # Get optional user specs
     model_info = train_request.model
 
-    # Set defaults if model field is not included in request
+    # If user did not pass in the model spec
     if model_info is None:
-        model_info = Model(type="meta_wa",
-                           score=["smape", "mape"])
-
-    model_info_json = jsonable_encoder(model_info)
-
-
-    # Create model objects from the spec user passed in
-    model = ModelFactory.create_model(dataset,
-                                      model_type=model_info_json["type"],
-                                      scorers=model_info_json["score"],
-                                      model_params=model_info_json["param"])
+        # Create model objects with the ModelFactory defaults
+        model = ModelFactory.create_model(dataset)
+    else:
+        model_info_json = jsonable_encoder(model_info)
+        # Create model objects from the spec user passed in
+        model = ModelFactory.create_model(dataset,
+                                          model_type=model_info_json["type"],
+                                          scorers=model_info_json["score"],
+                                          model_params=model_info_json["param"])        
 
     # Train model
     training_info = model.train(dataset)
