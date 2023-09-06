@@ -254,7 +254,7 @@ class ModelFactory():
                                for m in ['darts_autoets', 'darts_autoarima', 'darts_autotheta']]
             else:
                 base_models = [ModelFactory.create_model(dataset, base_model["type"])
-                               for base_model in model_params['base_models']]
+                               for base_model in model_params["base_models"]]
             model = MetaModelWA(models=base_models,
                                 scorers=scorer_func,
                                 type=model_type)
