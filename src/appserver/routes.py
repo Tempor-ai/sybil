@@ -9,6 +9,7 @@ import blosc
 import base64
 import numpy as np
 import logging
+from fastapi.encoders import jsonable_encoder
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -47,9 +48,7 @@ def index():
 
 @router.post('/train')
 async def train(train_request: TrainRequest):
-
     logger.debug("TrainRequest: %s", train_request)
-
     dataset = AbstractModel.prepare_dataset(pd.DataFrame(train_request.data))
 
     # Get optional user specs
@@ -60,11 +59,12 @@ async def train(train_request: TrainRequest):
         # Create model objects with the ModelFactory defaults
         model = ModelFactory.create_model(dataset)
     else:
+        model_info_json = jsonable_encoder(model_info)
         # Create model objects from the spec user passed in
         model = ModelFactory.create_model(dataset,
-                                          model_type=model_info.type,
-                                          scorers=model_info.score,
-                                          model_params=model_info.param)
+                                          model_type=model_info_json["type"],
+                                          scorers=model_info_json["score"],
+                                          model_params=model_info_json["param"])        
 
     # Train model
     training_info = model.train(dataset)
