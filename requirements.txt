@@ -7,4 +7,5 @@ statsmodels==0.14.0
 scikit-learn
 fastapi
 blosc
-darts
+u8darts
+pytest
