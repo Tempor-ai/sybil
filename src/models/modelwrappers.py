@@ -200,6 +200,7 @@ class MetaModelLR(AbstractModel):
     """
     MetaModel using Linear Regression to combine base models.
     """
+
     def __init__(self, models, *args, **kwargs):
         self.base_models = models
         self.regressor = LinearRegression()
