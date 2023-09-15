@@ -25,29 +25,12 @@ def main():
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
         #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape'], 'params': {}}
-        'model': {'type': 'meta_lr',
-                  'score': ['smape', 'mape'],
-                  'params': {
-                      'preprocessors': [
-                          {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
-                          {'type': 'minmaxscaler'}
-                      ],
-                      'base_models': [
-                          {'type': 'darts_autoets'},
-                          {'type': 'darts_autoarima'},
-                          {'type': 'darts_autotheta'},
-                          {'type': 'stats_autotheta'}
-
-        ]}}
     }
 
     # Prepare the dataset and create the model
     dataset = ModelFactory.prepare_dataset(pd.read_json(api_json['data']))
     train_data, test_data = train_test_split(dataset, test_size=0.2, shuffle=False)
-    model = ModelFactory.create_model(train_data,
-                                      type=api_json['model']['type'],
-                                      scorers=api_json['model']['score'],
-                                      params=api_json['model']['params'])
+    model = ModelFactory.create_model(train_data)
 
     # Train the model
     training_info = model.train(train_data)

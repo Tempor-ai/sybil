@@ -10,7 +10,19 @@ from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, Me
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
-DEFAULT_SCORERS = [smape, mape]
+DEFAULT_CFG = {'type': 'meta_lr',
+               'score': ['smape', 'mape'],
+               'params': {
+                   'preprocessors': [
+                       {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+                       {'type': 'minmaxscaler'}
+                   ],
+                   'base_models': [
+                       {'type': 'darts_autoets'},
+                       {'type': 'darts_autoarima'},
+                       {'type': 'darts_autotheta'},
+                       {'type': 'stats_autotheta'}]}
+               }
 DEFAULT_BASE_MODELS = [{'type': 'darts_autoets'}, {'type': 'darts_autoarima'}, {'type': 'darts_autotheta'}]
 
 
@@ -42,7 +54,10 @@ class ModelFactory:
         return ModelClass(season_length=season_length)
 
     @staticmethod
-    def create_model(dataset: pd.DataFrame, type: str = 'darts_autotheta', scorers: Union[str, List[str]] = 'mape', params: dict = {}) -> AbstractModel:
+    def create_model(dataset: pd.DataFrame,
+                     type: str = DEFAULT_CFG['type'],
+                     scorers: Union[str, List[str]] = DEFAULT_CFG['score'],
+                     params: dict = DEFAULT_CFG['params']) -> AbstractModel:
         """
         Create a model of the given type.
 
@@ -54,7 +69,8 @@ class ModelFactory:
         @return: A model of the given type.
         """
 
-        scorer_funcs = [SCORERS_DICT[s] for s in scorers] if (isinstance(scorers, list) and len(scorers) > 0) else DEFAULT_SCORERS
+        scorer_funcs = [SCORERS_DICT[s] for s in scorers] if (isinstance(scorers, list) and len(scorers) > 0) \
+            else DEFAULT_CFG['score']
         season_length = get_seasonal_period(dataset["value"])
 
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
