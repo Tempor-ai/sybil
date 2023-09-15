@@ -6,9 +6,11 @@ Using the Statsforecast wrapper to train a base model and predict on a dataset.
 import pickle
 import argparse
 import pandas as pd
+from sklearn.model_selection import train_test_split
+
 from src.models.modelfactory import ModelFactory
 
-DATASET_PASSENGER = "datasets/retail/air_passengers.csv"
+DATASET_PASSENGER = "datasets/climate/temp_anom_w_forcing.csv"
 
 
 def main():
@@ -22,7 +24,7 @@ def main():
     # Simulate API json payload received from the user
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
-        #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape']},
+        #'model': {'type': 'darts_autoarima', 'score': ['smape', 'mape'], 'params': {}}
         'model': {'type': 'meta_lr',
                   'score': ['smape', 'mape'],
                   'params': {
@@ -31,30 +33,36 @@ def main():
                           {'type': 'minmaxscaler'}
                       ],
                       'base_models': [
-                          {'type': 'stats_autotheta'},
+                          {'type': 'darts_autoets'},
                           {'type': 'darts_autoarima'},
                           {'type': 'darts_autotheta'},
-                          {'type': 'darts_autoets'}
+                          {'type': 'stats_autotheta'}
+
         ]}}
     }
 
     # Prepare the dataset and create the model
     dataset = ModelFactory.prepare_dataset(pd.read_json(api_json['data']))
-    model = ModelFactory.create_model(dataset,
+    train_data, test_data = train_test_split(dataset, test_size=0.2, shuffle=False)
+    model = ModelFactory.create_model(train_data,
                                       type=api_json['model']['type'],
                                       scorers=api_json['model']['score'],
                                       params=api_json['model']['params'])
 
     # Train the model
-    training_info = model.train(dataset)
+    training_info = model.train(train_data)
     print(f'Training Complete: {training_info}')
 
     # Pickling and unpickling the model just to test it, where should it happen?
     training_info['model'] = pickle.dumps(training_info['model'])
-    training_info['model'] = pickle.loads(training_info['model'])
+    model = pickle.loads(training_info['model'])
 
-    # Predict next steps
-    y_pred = training_info['model'].predict(lookforward=1)
+    # Predict and plot test set
+    y_test = test_data.iloc[:, -1]
+    x_test = test_data.iloc[:, :-1] if test_data.shape[1] > 1 else None
+    y_pred = model.predict(lookforward=len(test_data), X=x_test)
+    model.plot_prediction(y_test, X=x_test)
+    print(model.score(y_test, X=x_test))
     print(y_pred)
 
 
