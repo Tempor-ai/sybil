@@ -15,5 +15,5 @@ Feature engineering
 
 
 Feature Importance Analysis
-- They have used linear correlation but one needs to be careful with that (confounders, non-linear relationships, etc.).We probably should use a more robust feature importance analysis method (RFE, Permutation Feature Importance, etc. Need to find a robust study comparing these.)
+- They have used linear correlation but one needs to be careful with that (confounders, non-linear relationships, etc.). We probably should use a more robust feature importance analysis method (RFE, Permutation Feature Importance, etc. Need to find a robust study comparing these.)
 - 
