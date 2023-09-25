@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 import pickle
 import pandas as pd
-from models.modelwrappers import AbstractModel, ModelFactory
+from models.modelwrappers import AbstractModel
+from models.modelfactory import ModelFactory
 from typing import Union, List
 import blosc
 import base64
@@ -21,8 +22,8 @@ class Parameters(BaseModel):
 
 class Model(BaseModel):
     type: str
-    score: Union[List[str], None] = None
-    param: Union[Parameters, None] = None
+    scorers: Union[List[str], None] = None
+    params: Union[Parameters, None] = None
 
 
 class TrainRequest(BaseModel):
@@ -49,7 +50,7 @@ def index():
 @router.post('/train')
 async def train(train_request: TrainRequest):
     logger.debug("TrainRequest: %s", train_request)
-    dataset = AbstractModel.prepare_dataset(pd.DataFrame(train_request.data))
+    dataset = ModelFactory.prepare_dataset(pd.DataFrame(train_request.data))
 
     # Get optional user specs
     model_info = train_request.model
@@ -61,10 +62,10 @@ async def train(train_request: TrainRequest):
     else:
         model_info_json = jsonable_encoder(model_info)
         # Create model objects from the spec user passed in
-        model = ModelFactory.create_model(dataset,
-                                          model_type=model_info_json["type"],
-                                          scorers=model_info_json["score"],
-                                          model_params=model_info_json["param"])        
+        model = ModelFactory.create_model(dataset=dataset,
+                                          type=model_info_json["type"],
+                                          scorers=model_info_json["scorers"],
+                                          params=model_info_json["params"])      
 
     # Train model
     training_info = model.train(dataset)
