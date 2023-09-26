@@ -10,6 +10,11 @@ from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, Me
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
+DEFAULT_BASE_MODELS = [{'type': 'darts_lightgbm'},
+                       {'type': 'darts_autoets'},
+                       {'type': 'darts_autoarima'},
+                       {'type': 'darts_autotheta'},
+                       {'type': 'stats_autotheta'}]
 DEFAULT_CFG = {'type': 'meta_lr',
                'score': ['smape', 'mape'],
                'params': {
@@ -17,13 +22,8 @@ DEFAULT_CFG = {'type': 'meta_lr',
                        {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
                        {'type': 'minmaxscaler'}
                    ],
-                   'base_models': [
-                       {'type': 'darts_autoets'},
-                       {'type': 'darts_autoarima'},
-                       {'type': 'darts_autotheta'},
-                       {'type': 'stats_autotheta'}]}
+                   'base_models': DEFAULT_BASE_MODELS}
                }
-DEFAULT_BASE_MODELS = [{'type': 'darts_autoets'}, {'type': 'darts_autoarima'}, {'type': 'darts_autotheta'}]
 
 
 class ModelFactory:
@@ -32,13 +32,12 @@ class ModelFactory:
     """
 
     @staticmethod
-    def _get_model_instance(type: str, season_length: int):
+    def _get_model_class(type: str):
         """
-        Helper method to instantiate a model based on its type and season_length.
+        Helper method to import and return the class of a model based on its type.
 
         :param type: The type of model to instantiate.
-        :param season_length: Seasonal period of the dataset.
-        :return: An instance of the specified model.
+        :return: An class of the specified model.
         """
         models = {
             'stats_autotheta': ('statsforecast.models', 'AutoTheta'),
@@ -46,17 +45,18 @@ class ModelFactory:
             'stats_autoets': ('statsforecast.models', 'AutoETS'),
             'darts_autotheta': ('darts.models', 'StatsForecastAutoTheta'),
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
-            'darts_autoets': ('darts.models', 'StatsForecastAutoETS')
+            'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
+            'darts_lightgbm': ('darts.models.forecasting.lgbm', 'LightGBMModel')
         }
 
         module_name, class_name = models[type]
-        ModelClass = getattr(__import__(module_name, fromlist=[class_name]), class_name)
-        return ModelClass(season_length=season_length)
+        return getattr(__import__(module_name, fromlist=[class_name]), class_name)
+
 
     @staticmethod
     def create_model(dataset: pd.DataFrame,
                      type: str = DEFAULT_CFG['type'],
-                     scorers: Union[str, List[str]] = DEFAULT_CFG['score'],
+                     score: Union[str, List[str]] = DEFAULT_CFG['score'],
                      params: dict = DEFAULT_CFG['params']) -> AbstractModel:
         """
         Create a model of the given type.
@@ -64,20 +64,29 @@ class ModelFactory:
         @param dataset: A dataframe containing the dataset with the time column as the first column
         and the target column as the last column.
         @param type: The type of the model to create. Defaults to 'darts_autotheta'.
-        @param scorers: A list of scorers to use for evaluation. Defaults to 'mape'.
+        @param score: A list of scorers to use for evaluation. Defaults to 'mape'.
         @param params: A dictionary containing the model parameters if necessary.
         @return: A model of the given type.
         """
 
-        scorer_funcs = [SCORERS_DICT[s] for s in scorers] if (isinstance(scorers, list) and len(scorers) > 0) \
+        scorer_funcs = [SCORERS_DICT[s] for s in score] if (isinstance(score, list) and len(score) > 0) \
             else DEFAULT_CFG['score']
         season_length = get_seasonal_period(dataset["value"])
 
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
-            model_instance = ModelFactory._get_model_instance(type, season_length)
+            model_class = ModelFactory._get_model_class(type)
+            model_instance = model_class(season_length=season_length)
             predictor = StatsforecastWrapper(stats_model=model_instance, type=type, scorers=scorer_funcs)
         elif type in ('darts_autotheta', 'darts_autoarima', 'darts_autoets'):
-            model_instance = ModelFactory._get_model_instance(type, season_length)
+            model_class = ModelFactory._get_model_class(type)
+            model_instance = model_class(season_length=season_length)
+            predictor = DartsWrapper(darts_model=model_instance, type=type, scorers=scorer_funcs)
+        elif type == 'darts_lightgbm':
+            model_class = ModelFactory._get_model_class(type)
+            lags = max(season_length, 1)
+            model_instance = model_class(lags=lags,
+                                         #lags_future_covariates=(0, lags)  TODO: Need to fix use of covariates lags
+                                         )
             predictor = DartsWrapper(darts_model=model_instance, type=type, scorers=scorer_funcs)
         elif "meta_" in type:
             base_models_kwargs = DEFAULT_BASE_MODELS if not params else params['base_models']
