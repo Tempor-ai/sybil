@@ -5,5 +5,5 @@ LABEL maintainer="Sebastian Ramirez <tiangolo@gmail.com>"
 COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY ./appserver /app
-COPY ./models /models
+COPY ./appserver /app/app
+COPY ./models /app/app/models
