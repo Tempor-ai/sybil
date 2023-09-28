@@ -24,11 +24,13 @@ def main():
     # Simulate API json payload received from the user
     api_json = {
         'data': pd.read_csv(args['dataset']).to_json(),
-        #'model': {'type': 'darts_lightgbm', 'score': ['smape', 'mape'], 'params': {}} Used to test lightgbm only
-        'model': {}
+        #'model': {'type': 'darts_lightgbm'}  # Used to test lightgbm only
+        #'model': {'type': 'darts_rnn'}  # Used to test rnn only
+        'model': {}   # Used to test the latest metamodel
     }
 
     # Prepare the dataset and create the model
+    print(f'\nPreparing dataset {args["dataset"]} and creating model')
     dataset = ModelFactory.prepare_dataset(pd.read_json(api_json['data']))
     train_data, test_data = train_test_split(dataset, test_size=0.2, shuffle=False)
     model = ModelFactory.create_model(train_data, **api_json['model'])
@@ -46,8 +48,8 @@ def main():
     x_test = test_data.iloc[:, :-1] if test_data.shape[1] > 1 else None
     y_pred = model.predict(lookforward=len(test_data), X=x_test)
     model.plot_prediction(y_test, X=x_test)
-    print(model.score(y_test, X=x_test))
-    print(y_pred)
+    print(f'\nModel scores OOS {model.score(y_test, X=x_test)}')
+    print(f'\nModel predictions\n{y_pred}')
 
 
 if __name__ == "__main__":

@@ -80,12 +80,12 @@ class AbstractModel(ABC):
                                                shuffle=False)
             X_train, X_test = None, None
 
-        print(f"Training model {self.type} on {len(y_train)} samples. (TEST)")
+        print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
         self._train(y=y_train, X=X_train)
         scores = self.score(y_test, X=X_test)
 
         self.train_idx = data.index
-        print(f"Training model {self.type} on {len(y)} samples. (FULL)")
+        print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
         self._train(y=y, X=X)  # Refit with full data
 
         return {'model': self,
@@ -188,11 +188,11 @@ class MetaModelWA(AbstractModel):
         main_scorer = self.scorers[0]
         base_scores = {}
         for model in self.base_models:
-            print(f"Fitting base model: {model.type}")
+            print(f"\nFitting base model: {model.type}")
             model._train(y_base)
             y_pred = model.predict(len(y_meta))
             base_scores[model.type] = main_scorer(y_meta, y_pred)
-            print(f"{main_scorer.__name__} test score: {base_scores[model.type]}")
+            print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
             model._train(y)
             model.train_idx = y.index
         total_score = sum(base_scores.values())
@@ -223,12 +223,15 @@ class MetaModelLR(AbstractModel):
         else:
             y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
         base_predictions = []
+        main_scorer = self.scorers[0]
 
         for model in self.base_models:
-            print(f"Fitting base model: {model.type}")
+            print(f"\nFitting base model: {model.type}")
             model._train(y_base, X=X_base)
             y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
             base_predictions.append(y_pred)
+            test_score = main_scorer(y_meta, y_pred)
+            print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
             model._train(y, X=X)  # Refit with full data
 
         # Use linear regression to learn the weights
@@ -237,8 +240,8 @@ class MetaModelLR(AbstractModel):
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = [model.predict(lookforward, X) for model in self.base_models]
-        X_meta = np.column_stack(base_predictions)
-        meta_predictions = self.regressor.predict(X_meta)
+        base_predictions = np.column_stack(base_predictions)
+        meta_predictions = self.regressor.predict(base_predictions)
         return meta_predictions.ravel()
 
 
