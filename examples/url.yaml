@@ -3,5 +3,5 @@ host: localhost
 port: 80
 
 #protocol: https
-#host: sybil.tempor.ai
+#host: sybil-test.tempor.ai
 #port: 443
