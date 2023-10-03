@@ -71,7 +71,7 @@ class ModelFactory:
 
         scorer_funcs = [SCORERS_DICT[s] for s in scorers] if (isinstance(scorers, list) and len(scorers) > 0) \
             else DEFAULT_CFG['score']
-        season_length = get_seasonal_period(dataset["value"])
+        season_length = get_seasonal_period(dataset.iloc[:, -1])
 
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
             model_instance = ModelFactory._get_model_instance(type, season_length)
@@ -112,17 +112,19 @@ class ModelFactory:
             raise ValueError(f'Unknown preprocessor type: {type}')
 
     @staticmethod
-    def prepare_dataset(dataset: pd.DataFrame, time_col=0, value_col=-1) -> pd.DataFrame:
+    def prepare_dataset(dataset: pd.DataFrame, time_col=0) -> pd.DataFrame:
         """
         Prepare the dataset for training or prediction.
 
         :param dataset: Dataframe containing the dataset.
         :param time_col: Index or name of the column identifying the time component. Defaults to 0.
-        :param value_col: Index or name of the column identifying the value component. Defaults to -1.
-        :return: Dataframe with the time and value columns renamed to 'datetime' and 'value' respectively.
+        :return: Dataframe with the time column formatted to datetime, set as index and the
+        other columns cast as floats.
         """
-        clean_dataset = dataset.rename(columns={dataset.columns[time_col]: 'datetime', dataset.columns[value_col]: 'value'})
-        if clean_dataset['datetime'].dtype == object:
-            clean_dataset['datetime'] = pd.to_datetime(clean_dataset['datetime'], infer_datetime_format=True)
-        clean_dataset = clean_dataset.set_index("datetime").astype(float)
+        clean_dataset = dataset.copy()
+        time_col_name = clean_dataset.columns[time_col]
+        if clean_dataset[time_col_name].dtype == object:
+            clean_dataset[time_col_name] = pd.to_datetime(clean_dataset[time_col_name],
+                                                       infer_datetime_format=True)
+        clean_dataset = clean_dataset.set_index(time_col_name).astype(float)
         return clean_dataset
