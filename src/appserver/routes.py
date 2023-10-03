@@ -3,8 +3,8 @@ from pydantic import BaseModel
 
 import pickle
 import pandas as pd
-from models.modelwrappers import AbstractModel
-from models.modelfactory import ModelFactory
+from .models.modelwrappers import AbstractModel
+from .models.modelfactory import ModelFactory
 from typing import Union, List
 import blosc
 import base64
@@ -95,7 +95,7 @@ class ForecastRequest(BaseModel):
 
 
 class ForecastResponse(BaseModel):
-    data: List[Union[List[Union[int, str, float]], float]]
+    data: List[List[Union[int, str, float]]]
 
 
 @router.post('/forecast')
@@ -108,6 +108,10 @@ async def forecast(forecast_request: ForecastRequest):
 
     # TODO Model currently does not support dates, array is converted into number of steps
     num_steps = len(forecast_request.predicts)
-    output = model.predict(lookforward=num_steps)
+
+    output = model.predict(lookforward=num_steps).reset_index()
+    output['index'] = output['index'].apply(lambda x:x.isoformat())
+    output = output.values.tolist()
+    print(output)
 
     return ForecastResponse(data=output)
