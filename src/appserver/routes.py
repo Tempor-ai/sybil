@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 import pickle
 import pandas as pd
-from .models.modelwrappers import AbstractModel
 from .models.modelfactory import ModelFactory
 from typing import Union, List
 import blosc
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 DATASET_VALUE = Union[str, int, float]
+
 
 class Parameters(BaseModel):
     base_models: Union[List['Model'], None] = None
@@ -62,10 +62,7 @@ async def train(train_request: TrainRequest):
     else:
         model_info_json = jsonable_encoder(model_info)
         # Create model objects from the spec user passed in
-        model = ModelFactory.create_model(dataset=dataset,
-                                          type=model_info_json["type"],
-                                          scorers=model_info_json["scorers"],
-                                          params=model_info_json["params"])      
+        model = ModelFactory.create_model(dataset=dataset, **model_info_json)
 
     # Train model
     training_info = model.train(dataset)
