@@ -1,3 +1,14 @@
-protocol: https
-host: sybil.tempor.ai
-port: 443
+# Local
+protocol: http
+host: localhost
+port: 80
+
+# UAT
+# protocol: https
+# host: sybil-test.tempor.ai
+# port: 443
+
+# PROD
+# protocol: https
+# host: sybil.tempor.ai
+# port: 443
