@@ -178,8 +178,8 @@ class MetaModelWA(AbstractModel):
     """
     MetaModel using the weighted average.
     """
-    def __init__(self, models, *args, **kwargs):
-        self.base_models = models
+    def __init__(self, base_models, *args, **kwargs):
+        self.base_models = base_models
         self.models_weights = {}
         super().__init__(*args, **kwargs)
 
@@ -211,8 +211,8 @@ class MetaModelLR(AbstractModel):
     MetaModel using Linear Regression to combine base models.
     """
 
-    def __init__(self, models, *args, **kwargs):
-        self.base_models = models
+    def __init__(self, base_models, *args, **kwargs):
+        self.base_models = base_models
         self.regressor = LinearRegression()
         super().__init__(*args, **kwargs)
 

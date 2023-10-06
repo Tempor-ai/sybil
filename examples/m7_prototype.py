@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 
 from src.models.modelfactory import ModelFactory
 
-DEFAULT_DATASET = "datasets/retail/air_passengers.csv"
+DEFAULT_DATASET = "datasets/climate/temp_anom_w_forcing.csv"
 
 
 def main():
@@ -20,20 +20,19 @@ def main():
                         help='Path or url to the dataset csv file.',
                         default=DEFAULT_DATASET)
     args = vars(parser.parse_args())
+    dataset = ModelFactory.prepare_dataset(pd.read_csv(args['dataset']))
+    train_data, test_data = train_test_split(dataset, test_size=0.2, shuffle=False)
 
     # Simulate API json payload received from the user
     api_json = {
-        'data': pd.read_csv(args['dataset']).to_json(),
-        #'model': {'type': 'darts_lightgbm'}  # Used to test lightgbm only
-        #'model': {'type': 'darts_rnn'}  # Used to test rnn only
-        'model': {}   # Used to test the latest metamodel
+        'dataset': train_data,
+        'type': 'darts_autoarima',
+        'scorers': ['smape', 'mape'],
+        'params': {}
     }
 
     # Prepare the dataset and create the model
-    print(f'\nPreparing dataset {args["dataset"]} and creating model')
-    dataset = ModelFactory.prepare_dataset(pd.read_json(api_json['data']))
-    train_data, test_data = train_test_split(dataset, test_size=0.2, shuffle=False)
-    model = ModelFactory.create_model(train_data, **api_json['model'])
+    model = ModelFactory.create_model(**api_json)
 
     # Train the model
     training_info = model.train(train_data)
@@ -48,8 +47,8 @@ def main():
     x_test = test_data.iloc[:, :-1] if test_data.shape[1] > 1 else None
     y_pred = model.predict(lookforward=len(test_data), X=x_test)
     model.plot_prediction(y_test, X=x_test)
-    print(f'\nModel scores OOS {model.score(y_test, X=x_test)}')
-    print(f'\nModel predictions\n{y_pred}')
+    print(model.score(y_test, X=x_test))
+    print(y_pred)
 
 
 if __name__ == "__main__":

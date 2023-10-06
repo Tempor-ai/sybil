@@ -54,7 +54,7 @@ class ModelFactory:
     @staticmethod
     def create_model(dataset: pd.DataFrame,
                      type: str = 'meta_lr',
-                     score: Union[str, List[str]] = None,
+                     scorers: Union[str, List[str]] = None,
                      params: dict = None) -> AbstractModel:
         """
         Create a model of the given type.
@@ -62,16 +62,16 @@ class ModelFactory:
         @param dataset: A dataframe containing the dataset with the time column as the first column
         and the target column as the last column.
         @param type: The type of the model to create. Defaults to 'darts_autotheta'.
-        @param score: A list of scorers to use for evaluation. Defaults to 'mape'.
+        @param scorers: A list of scorers to use for evaluation. Defaults to 'mape'.
         @param params: A dictionary containing the model parameters if necessary.
         @return: A model of the given type.
         """
 
-        if score is None: score = ['smape', 'mape']
+        if scorers is None: scorers = ['smape', 'mape']
         if params is None: params = {}
 
-        scorer_funcs = [SCORERS_DICT[s] for s in score]
-        season_length = max(get_seasonal_period(dataset["value"]), 1)
+        scorer_funcs = [SCORERS_DICT[s] for s in scorers]
+        season_length = max(get_seasonal_period(dataset.iloc[:, -1]), 1)
 
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
             model_class = ModelFactory._get_model_class(type)
@@ -95,7 +95,8 @@ class ModelFactory:
             predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
         elif "meta_" in type:
             base_models_kwargs = params.get('base_models', META_BASE_MODELS)
-            params['models'] = [ModelFactory.create_model(dataset, **kws) for kws in base_models_kwargs]
+            params['base_models'] = [ModelFactory.create_model(dataset, **kws)
+                                     for kws in base_models_kwargs]
             ModelClass = MetaModelWA if type == 'meta_wa' else MetaModelLR
             predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
             params.setdefault('preprocessors', META_PREPROCESSORS)
@@ -126,19 +127,19 @@ class ModelFactory:
             raise ValueError(f'Unknown preprocessor type: {type}')
 
     @staticmethod
-    def prepare_dataset(dataset: pd.DataFrame, time_col=0, value_col=-1) -> pd.DataFrame:
+    def prepare_dataset(dataset: pd.DataFrame, time_col=0) -> pd.DataFrame:
         """
         Prepare the dataset for training or prediction.
 
         :param dataset: Dataframe containing the dataset.
         :param time_col: Index or name of the column identifying the time component. Defaults to 0.
-        :param value_col: Index or name of the column identifying the value component. Defaults to -1.
-        :return: Dataframe with the time and value columns renamed to 'datetime' and 'value' respectively.
+        :return: Dataframe with the time column formatted to datetime, set as index and the
+        other columns cast as floats.
         """
-        clean_dataset = dataset.rename(columns={dataset.columns[time_col]: 'datetime',
-                                                dataset.columns[value_col]: 'value'})
-        if clean_dataset['datetime'].dtype == object:
-            clean_dataset['datetime'] = pd.to_datetime(clean_dataset['datetime'],
+        clean_dataset = dataset.copy()
+        time_col_name = clean_dataset.columns[time_col]
+        if clean_dataset[time_col_name].dtype == object:
+            clean_dataset[time_col_name] = pd.to_datetime(clean_dataset[time_col_name],
                                                        infer_datetime_format=True)
-        clean_dataset = clean_dataset.set_index("datetime").astype(float)
+        clean_dataset = clean_dataset.set_index(time_col_name).astype(float)
         return clean_dataset
