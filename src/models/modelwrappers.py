@@ -57,7 +57,6 @@ class AbstractModel(ABC):
         plt.tight_layout()
         plt.show()
 
-    # TODO: Need to integrate exogenous variables X
     def train(self, data: pd.DataFrame, test_size=0.1) -> dict:
         """
         Train a model on the given data.

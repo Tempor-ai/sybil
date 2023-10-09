@@ -26,7 +26,7 @@ def main():
     # Simulate API json payload received from the user
     api_json = {
         'dataset': train_data,
-        'type': 'darts_autoarima',
+        'type': 'darts_lightgbm',
         'scorers': ['smape', 'mape'],
         'params': {}
     }

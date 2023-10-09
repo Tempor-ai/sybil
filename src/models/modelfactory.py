@@ -85,8 +85,8 @@ class ModelFactory:
             predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
         elif type == 'darts_lightgbm':
             model_class = ModelFactory._get_model_class(type)
-            params.setdefault('lags', season_length)
-            darts_model = model_class(**params)  # TODO: Need to fix use of covariates lags
+            params.setdefault('lags_future_covariates', [0])
+            darts_model = model_class(**params)
             predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
         elif type == 'darts_rnn':
             model_class = ModelFactory._get_model_class(type)
