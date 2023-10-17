@@ -3,17 +3,17 @@ from pydantic import BaseModel
 
 import pickle
 import pandas as pd
-from models.modelwrappers import AbstractModel
-from models.modelfactory import ModelFactory
+from .models.modelfactory import ModelFactory
 from typing import Union, List
 import blosc
 import base64
-import numpy as np
 import logging
 from fastapi.encoders import jsonable_encoder
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+DATASET_VALUE = Union[str, int, float]
 
 
 class Parameters(BaseModel):
@@ -27,7 +27,7 @@ class Model(BaseModel):
 
 
 class TrainRequest(BaseModel):
-    data: List[List[Union[str, int, float]]]
+    data: List[List[DATASET_VALUE]]
     model: Union[Model, None] = None
 
 
@@ -62,10 +62,7 @@ async def train(train_request: TrainRequest):
     else:
         model_info_json = jsonable_encoder(model_info)
         # Create model objects from the spec user passed in
-        model = ModelFactory.create_model(dataset=dataset,
-                                          type=model_info_json["type"],
-                                          scorers=model_info_json["scorers"],
-                                          params=model_info_json["params"])      
+        model = ModelFactory.create_model(dataset=dataset, **model_info_json)
 
     # Train model
     training_info = model.train(dataset)
@@ -85,17 +82,16 @@ async def train(train_request: TrainRequest):
     # There is dynamacism in the evaluation field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
-                         evaluation=evaluation
-                         )
+                         evaluation=evaluation)
 
 
 class ForecastRequest(BaseModel):
     model: str
-    predicts: List[Union[int, str]]
+    predicts: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
 
 
 class ForecastResponse(BaseModel):
-    data: List[Union[List[Union[int, str, float]], float]]
+    data: List[List[DATASET_VALUE]]
 
 
 @router.post('/forecast')
@@ -107,7 +103,13 @@ async def forecast(forecast_request: ForecastRequest):
     model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
 
     # TODO Model currently does not support dates, array is converted into number of steps
+    if isinstance(forecast_request.predicts[0], list):  # Forecast request has exogenous variables
+        dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.predicts))
+    else:
+        dataset = None
     num_steps = len(forecast_request.predicts)
-    output = model.predict(lookforward=num_steps)
+    output = model.predict(lookforward=num_steps, X=dataset).reset_index()
+    output['index'] = output['index'].apply(lambda x:x.isoformat())
+    output = output.values.tolist()
 
     return ForecastResponse(data=output)

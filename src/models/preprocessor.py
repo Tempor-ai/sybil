@@ -91,27 +91,27 @@ class SimpleImputer(AbstractPreprocessor):
     def __init__(self, strategy="mean", fill_value=None):
         self.strategy = strategy
         self.fill_value = fill_value
-        self.mask = None
+        self.fill_mask = None
 
     def fit(self, X: pd.DataFrame) -> None:
         """Calculate the fill value based on the strategy."""
         if self.strategy == "mean":
             self.fill_value = X.mean()
         elif self.strategy == "median":
-            self.fill_value = np.median(X)
+            self.fill_value = X.median()
         elif self.strategy == "constant":
             pass
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Impute missing values in X."""
-        X_imputed = X.copy().values
-        self.mask = np.isnan(X_imputed)
-        for i in range(X_imputed.shape[1]):
-            X_imputed[self.mask[:, i], i] = self.fill_value[i]
-        return pd.DataFrame(X_imputed, index=X.index, columns=X.columns)
+        X_imputed = X.copy()
+        self.fill_mask = X_imputed.isna()
+        for col in X_imputed.columns:
+            X_imputed.loc[self.fill_mask[col], col] = self.fill_value[col]
+        return X_imputed
 
     def inverse_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Inverse transform X back to original with missing values."""
-        X_missing = X.copy().values
-        X_missing[self.mask] = np.nan
-        return pd.DataFrame(X_missing, index=X.index, columns=X.columns)
+        X_missing = X.copy()
+        X_missing[self.fill_mask] = np.nan
+        return X_missing
