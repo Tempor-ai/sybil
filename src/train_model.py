@@ -11,8 +11,8 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 DATASET_PASSENGER = os.path.join(SCRIPT_DIR, "..", "datasets", "retail", "air_passengers.csv")
 OUT_FILE = os.path.join(SCRIPT_DIR, "train_response.json")
 DEFAULT_MODEL_REQUEST = json.dumps({'type': 'meta_wa',
-                                    'score': ['smape', 'mape'],
-                                    'param': {
+                                    'scorers': ['smape', 'mape'],
+                                    'params': {
                                         'base_models': [
                                             {'type': 'darts_autoarima'},
                                             {'type': 'darts_autotheta'},
