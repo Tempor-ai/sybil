@@ -73,30 +73,8 @@ class ModelFactory:
         scorer_funcs = [SCORERS_DICT[s] for s in scorers]
         season_length = max(get_seasonal_period(dataset.iloc[:, -1]), 1)
 
-        if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
-            model_class = ModelFactory._get_model_class(type)
-            params.setdefault('season_length', season_length)
-            stats_model = model_class(**params)
-            predictor = StatsforecastWrapper(stats_model=stats_model, type=type, scorers=scorer_funcs)
-        elif type in ('darts_autotheta', 'darts_autoarima', 'darts_autoets'):
-            model_class = ModelFactory._get_model_class(type)
-            params.setdefault('season_length', season_length)
-            darts_model = model_class(**params)
-            predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
-        elif type == 'darts_lightgbm':
-            model_class = ModelFactory._get_model_class(type)
-            if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
-                params.setdefault('lags_future_covariates', [0])
-            if 'lags' not in params:
-                params.setdefault('lags', season_length)
-            darts_model = model_class(**params)
-            predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
-        elif type == 'darts_rnn':
-            model_class = ModelFactory._get_model_class(type)
-            params.setdefault('input_chunk_length', season_length)
-            darts_model = model_class(**params)  # TODO: Need to fix use of covariates lags
-            predictor = DartsWrapper(darts_model=darts_model, type=type, scorers=scorer_funcs)
-        elif "meta_" in type:
+        if type.startswith('meta_'):
+            # Meta model case
             base_models_kwargs = params.get('base_models', META_BASE_MODELS)
             params['base_models'] = [ModelFactory.create_model(dataset, **kws)
                                      for kws in base_models_kwargs]
@@ -104,7 +82,22 @@ class ModelFactory:
             predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
             params.setdefault('preprocessors', META_PREPROCESSORS)
         else:
-            raise ValueError(f'Unknown model type: {type}')
+            # Base model case
+            if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
+                        'darts_autotheta', 'darts_autoarima', 'darts_autoets'):
+                params.setdefault('season_length', season_length)
+            if type == 'darts_lightgbm':
+                if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
+                    params.setdefault('lags_future_covariates', [0])
+                if 'lags' not in params:
+                    params.setdefault('lags', season_length)
+            if type == 'darts_rnn':
+                params.setdefault('input_chunk_length', season_length)
+
+            model_class = ModelFactory._get_model_class(type)
+            wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
+            model_instance = model_class(**params)
+            predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs)
 
         if params and 'preprocessors' in params:
             preprocessors = [ModelFactory._create_preprocessor(pp_name)
@@ -143,6 +136,6 @@ class ModelFactory:
         time_col_name = clean_dataset.columns[time_col]
         if clean_dataset[time_col_name].dtype == object:
             clean_dataset[time_col_name] = pd.to_datetime(clean_dataset[time_col_name],
-                                                       infer_datetime_format=True)
+                                                          infer_datetime_format=True)
         clean_dataset = clean_dataset.set_index(time_col_name).astype(float)
         return clean_dataset

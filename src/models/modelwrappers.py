@@ -134,42 +134,42 @@ class StatsforecastWrapper(AbstractModel):
     """
     Wrapper for statsforecast models according to the AbstractModel interface.
     """
-    def __init__(self, stats_model, *args, **kwargs):
-        self.stats_model = stats_model
+    def __init__(self, model, *args, **kwargs):
+        self.model = model
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         y_val = y.values
         X_val = None if X is None else X.values
-        self.stats_model.fit(y=y_val, X=X_val)
+        self.model.fit(y=y_val, X=X_val)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         X_val = None if X is None else X.values
-        return self.stats_model.predict(h=lookforward, X=X_val)['mean']
+        return self.model.predict(h=lookforward, X=X_val)['mean']
 
 
 class DartsWrapper(AbstractModel):
     """
     Wrapper for Darts models according to the AbstractModel interface.
     """
-    def __init__(self, darts_model, *args, **kwargs):
-        self.darts_model = darts_model
+    def __init__(self, model, *args, **kwargs):
+        self.model = model
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         y_time_series = TimeSeries.from_series(y)
-        if X is not None and has_argument(self.darts_model.fit, 'future_covariates'):
+        if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_time_series = TimeSeries.from_dataframe(X)
-            self.darts_model.fit(y_time_series, future_covariates=X_time_series)
+            self.model.fit(y_time_series, future_covariates=X_time_series)
         else:
-            self.darts_model.fit(y_time_series)
+            self.model.fit(y_time_series)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
-        if X is not None and has_argument(self.darts_model.fit, 'future_covariates'):
+        if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_ts = TimeSeries.from_dataframe(X)
-            y_ts = self.darts_model.predict(n=lookforward, future_covariates=X_ts)
+            y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
         else:
-            y_ts = self.darts_model.predict(n=lookforward)
+            y_ts = self.model.predict(n=lookforward)
         return y_ts.values().ravel()
 
 
