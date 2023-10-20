@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 
 from src.models.modelfactory import ModelFactory
 
-DEFAULT_DATASET = "datasets/climate/temp_anom_w_forcing.csv"
+DEFAULT_DATASET = "datasets/finance/Returns_short_interest_data_train.csv"
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
     # Simulate API json payload received from the user
     api_json = {
         'dataset': train_data,
-        'type': 'darts_lightgbm',
+        'type': 'darts_autoarima',
         'scorers': ['smape', 'mape'],
         'params': {}
     }
