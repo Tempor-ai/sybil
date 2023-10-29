@@ -1,6 +1,6 @@
 """
-Prototype for the 2nd milestone of the project.
-Using the Statsforecast wrapper to train a base model and predict on a dataset.
+Prototype for the 7th milestone of the project.
+Using meta model and Darts LightGBM.
 """
 
 import pickle
