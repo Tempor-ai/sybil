@@ -31,7 +31,7 @@ class TrainRequest(BaseModel):
     model: Union[Model, None] = None
 
 
-class Evaluation(BaseModel):
+class Metric(BaseModel):
     type: str
     value: float
 
@@ -39,7 +39,7 @@ class Evaluation(BaseModel):
 class TrainResponse(BaseModel):
     model: str
     type: str
-    evaluation: Union[List[Evaluation], None] = None
+    metrics: Union[List[Metric], None] = None
 
 
 @router.get('/')
@@ -70,24 +70,25 @@ async def train(train_request: TrainRequest):
     # Serialize, compress, and finally encode model in base64 ASCII, so it can be sent in JSON
     output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model'])))
 
-    # Build evaluation JSON for response
-    evaluation = []
-    for evaluation_type in training_info["evaluation"]:
-        evaluation.append(Evaluation(type=evaluation_type,
-                                     value=training_info["evaluation"][evaluation_type]
-                                     ))
-    if len(evaluation) == 0:
-        evaluation = None
+    # Build metrics JSON for response
+    metrics = []
+    for metric_type in training_info["metrics"]:
+        metrics.append(Metric(type=metric_type,
+                              value=training_info["metrics"][metric_type]
+                              ))
+    if len(metrics) == 0:
+        metrics = None
 
-    # There is dynamacism in the evaluation field
+    # There is dynamacism in the metrics field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
-                         evaluation=evaluation)
+                         metrics=metrics
+                         )
 
 
 class ForecastRequest(BaseModel):
     model: str
-    predicts: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
+    data: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
 
 
 class ForecastResponse(BaseModel):
@@ -103,11 +104,11 @@ async def forecast(forecast_request: ForecastRequest):
     model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
 
     # TODO Model currently does not support dates, array is converted into number of steps
-    if isinstance(forecast_request.predicts[0], list):  # Forecast request has exogenous variables
-        dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.predicts))
+    if isinstance(forecast_request.data[0], list):  # Forecast request has exogenous variables
+        dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.data))
     else:
         dataset = None
-    num_steps = len(forecast_request.predicts)
+    num_steps = len(forecast_request.data)
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
     output['index'] = output['index'].apply(lambda x:x.isoformat())
     output = output.values.tolist()
