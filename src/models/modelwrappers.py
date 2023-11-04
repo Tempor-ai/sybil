@@ -20,7 +20,7 @@ class AbstractModel(ABC):
     Abstract class used for both Base ("Sibyl") and Meta ("Pythia") models.
 
     @param type: The type of the model, also used to build a new model from the Factory.
-    @param scorers: A list of scorers to use for evaluation.
+    @param scorers: A list of scorers to use for evaluating metrics.
     """
     def __init__(self, type: str, scorers: Union[METRIC_TYPE, List[METRIC_TYPE]]):
         self.type = type
@@ -90,7 +90,8 @@ class AbstractModel(ABC):
 
         return {'model': self,
                 'type': self.type,
-                'evaluation': scores}
+                'metrics': scores
+                }
 
     def predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> pd.Series:
         """
