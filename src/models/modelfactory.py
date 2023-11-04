@@ -62,7 +62,7 @@ class ModelFactory:
         @param dataset: A dataframe containing the dataset with the time column as the first column
         and the target column as the last column.
         @param type: The type of the model to create. Defaults to 'darts_autotheta'.
-        @param scorers: A list of scorers to use for evaluation. Defaults to 'mape'.
+        @param scorers: A list of scorers to use for evaluating metrics. Defaults to 'mape'.
         @param params: A dictionary containing the model parameters if necessary.
         @return: A model of the given type.
         """
