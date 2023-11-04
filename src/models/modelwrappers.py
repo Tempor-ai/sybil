@@ -57,7 +57,6 @@ class AbstractModel(ABC):
         plt.tight_layout()
         plt.show()
 
-    # TODO: Need to integrate exogenous variables X
     def train(self, data: pd.DataFrame, test_size=0.1) -> dict:
         """
         Train a model on the given data.
@@ -80,12 +79,12 @@ class AbstractModel(ABC):
                                                shuffle=False)
             X_train, X_test = None, None
 
-        print(f"Training model {self.type} on {len(y_train)} samples. (TEST)")
+        print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
         self._train(y=y_train, X=X_train)
         scores = self.score(y_test, X=X_test)
 
         self.train_idx = data.index
-        print(f"Training model {self.type} on {len(y)} samples. (FULL)")
+        print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
         self._train(y=y, X=X)  # Refit with full data
 
         return {'model': self,
@@ -136,42 +135,42 @@ class StatsforecastWrapper(AbstractModel):
     """
     Wrapper for statsforecast models according to the AbstractModel interface.
     """
-    def __init__(self, stats_model, *args, **kwargs):
-        self.stats_model = stats_model
+    def __init__(self, model, *args, **kwargs):
+        self.model = model
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         y_val = y.values
         X_val = None if X is None else X.values
-        self.stats_model.fit(y=y_val, X=X_val)
+        self.model.fit(y=y_val, X=X_val)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         X_val = None if X is None else X.values
-        return self.stats_model.predict(h=lookforward, X=X_val)['mean']
+        return self.model.predict(h=lookforward, X=X_val)['mean']
 
 
 class DartsWrapper(AbstractModel):
     """
     Wrapper for Darts models according to the AbstractModel interface.
     """
-    def __init__(self, darts_model, *args, **kwargs):
-        self.darts_model = darts_model
+    def __init__(self, model, *args, **kwargs):
+        self.model = model
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         y_time_series = TimeSeries.from_series(y)
-        if X is not None and has_argument(self.darts_model.fit, 'future_covariates'):
+        if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_time_series = TimeSeries.from_dataframe(X)
-            self.darts_model.fit(y_time_series, future_covariates=X_time_series)
+            self.model.fit(y_time_series, future_covariates=X_time_series)
         else:
-            self.darts_model.fit(y_time_series)
+            self.model.fit(y_time_series)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
-        if X is not None and has_argument(self.darts_model.fit, 'future_covariates'):
+        if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_ts = TimeSeries.from_dataframe(X)
-            y_ts = self.darts_model.predict(n=lookforward, future_covariates=X_ts)
+            y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
         else:
-            y_ts = self.darts_model.predict(n=lookforward)
+            y_ts = self.model.predict(n=lookforward)
         return y_ts.values().ravel()
 
 
@@ -179,8 +178,8 @@ class MetaModelWA(AbstractModel):
     """
     MetaModel using the weighted average.
     """
-    def __init__(self, models, *args, **kwargs):
-        self.base_models = models
+    def __init__(self, base_models, *args, **kwargs):
+        self.base_models = base_models
         self.models_weights = {}
         super().__init__(*args, **kwargs)
 
@@ -189,11 +188,11 @@ class MetaModelWA(AbstractModel):
         main_scorer = self.scorers[0]
         base_scores = {}
         for model in self.base_models:
-            print(f"Fitting base model: {model.type}")
+            print(f"\nFitting base model: {model.type}")
             model._train(y_base)
             y_pred = model.predict(len(y_meta))
             base_scores[model.type] = main_scorer(y_meta, y_pred)
-            print(f"{main_scorer.__name__} test score: {base_scores[model.type]}")
+            print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
             model._train(y)
             model.train_idx = y.index
         total_score = sum(base_scores.values())
@@ -212,8 +211,8 @@ class MetaModelLR(AbstractModel):
     MetaModel using Linear Regression to combine base models.
     """
 
-    def __init__(self, models, *args, **kwargs):
-        self.base_models = models
+    def __init__(self, base_models, *args, **kwargs):
+        self.base_models = base_models
         self.regressor = LinearRegression()
         super().__init__(*args, **kwargs)
 
@@ -224,12 +223,15 @@ class MetaModelLR(AbstractModel):
         else:
             y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
         base_predictions = []
+        main_scorer = self.scorers[0]
 
         for model in self.base_models:
-            print(f"Fitting base model: {model.type}")
+            print(f"\nFitting base model: {model.type}")
             model._train(y_base, X=X_base)
             y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
             base_predictions.append(y_pred)
+            test_score = main_scorer(y_meta, y_pred)
+            print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
             model._train(y, X=X)  # Refit with full data
 
         # Use linear regression to learn the weights
@@ -238,8 +240,8 @@ class MetaModelLR(AbstractModel):
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = [model.predict(lookforward, X) for model in self.base_models]
-        X_meta = np.column_stack(base_predictions)
-        meta_predictions = self.regressor.predict(X_meta)
+        base_predictions = np.column_stack(base_predictions)
+        meta_predictions = self.regressor.predict(base_predictions)
         return meta_predictions.ravel()
 
 
