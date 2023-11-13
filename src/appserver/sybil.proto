@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package temp;
+
+// The Scalar Value can be string, int32, or float.
+message ScalarValue {
+    oneof value {
+        string string_value = 1;
+        int32 int_value = 2;
+        float float_value = 3;
+    }
+}
+
+// New message to encapsulate a list of ScalarValue
+message ScalarValueList {
+    repeated ScalarValue values = 1;
+}
+
+message Parameters {
+    repeated Model base_models = 1;
+}
+
+message Model {
+    string type = 1;
+    repeated string scorers = 2;
+    Parameters params = 3;
+}
+
+message TrainRequest {
+    repeated ScalarValueList data = 1;
+    Model model = 2;
+}
+
+message Metric {
+    string type = 1;
+    float value = 2;
+}
+
+message TrainResponse {
+    string model = 1; // Base64 encoded string
+    string type = 2;
+    repeated Metric metrics = 3;
+}
+
+message ForecastRequest {
+    string model = 1; // Base64 encoded string
+    repeated ScalarValueList data = 2;
+}
+
+message ForecastResponse {
+    repeated ScalarValueList data = 1;
+}
+
+// The service definition.
+service Sybil {
+    rpc Train (TrainRequest) returns (TrainResponse);
+    rpc Forecast (ForecastRequest) returns (ForecastResponse);
+}
