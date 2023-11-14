@@ -13,31 +13,31 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bsybil.proto\x12\x04temp\"Z\n\x0bScalarValue\x12\x16\n\x0cstring_value\x18\x01 \x01(\tH\x00\x12\x13\n\tint_value\x18\x02 \x01(\x05H\x00\x12\x15\n\x0b\x66loat_value\x18\x03 \x01(\x02H\x00\x42\x07\n\x05value\"4\n\x0fScalarValueList\x12!\n\x06values\x18\x01 \x03(\x0b\x32\x11.temp.ScalarValue\".\n\nParameters\x12 \n\x0b\x62\x61se_models\x18\x01 \x03(\x0b\x32\x0b.temp.Model\"H\n\x05Model\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07scorers\x18\x02 \x03(\t\x12 \n\x06params\x18\x03 \x01(\x0b\x32\x10.temp.Parameters\"O\n\x0cTrainRequest\x12#\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x15.temp.ScalarValueList\x12\x1a\n\x05model\x18\x02 \x01(\x0b\x32\x0b.temp.Model\"%\n\x06Metric\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\"K\n\rTrainResponse\x12\r\n\x05model\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x1d\n\x07metrics\x18\x03 \x03(\x0b\x32\x0c.temp.Metric\"E\n\x0f\x46orecastRequest\x12\r\n\x05model\x18\x01 \x01(\t\x12#\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x15.temp.ScalarValueList\"7\n\x10\x46orecastResponse\x12#\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x15.temp.ScalarValueList2t\n\x05Sybil\x12\x30\n\x05Train\x12\x12.temp.TrainRequest\x1a\x13.temp.TrainResponse\x12\x39\n\x08\x46orecast\x12\x15.temp.ForecastRequest\x1a\x16.temp.ForecastResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bsybil.proto\"Z\n\x0bScalarValue\x12\x16\n\x0cstring_value\x18\x01 \x01(\tH\x00\x12\x13\n\tint_value\x18\x02 \x01(\x05H\x00\x12\x15\n\x0b\x66loat_value\x18\x03 \x01(\x02H\x00\x42\x07\n\x05value\"/\n\x0fScalarValueList\x12\x1c\n\x06values\x18\x01 \x03(\x0b\x32\x0c.ScalarValue\")\n\nParameters\x12\x1b\n\x0b\x62\x61se_models\x18\x01 \x03(\x0b\x32\x06.Model\"C\n\x05Model\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07scorers\x18\x02 \x03(\t\x12\x1b\n\x06params\x18\x03 \x01(\x0b\x32\x0b.Parameters\"E\n\x0cTrainRequest\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.ScalarValueList\x12\x15\n\x05model\x18\x02 \x01(\x0b\x32\x06.Model\"%\n\x06Metric\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\"F\n\rTrainResponse\x12\r\n\x05model\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x18\n\x07metrics\x18\x03 \x03(\x0b\x32\x07.Metric\"@\n\x0f\x46orecastRequest\x12\r\n\x05model\x18\x01 \x01(\t\x12\x1e\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x10.ScalarValueList\"2\n\x10\x46orecastResponse\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.ScalarValueList2`\n\x05Sybil\x12&\n\x05Train\x12\r.TrainRequest\x1a\x0e.TrainResponse\x12/\n\x08\x46orecast\x12\x10.ForecastRequest\x1a\x11.ForecastResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'sybil_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_SCALARVALUE']._serialized_start=21
-  _globals['_SCALARVALUE']._serialized_end=111
-  _globals['_SCALARVALUELIST']._serialized_start=113
-  _globals['_SCALARVALUELIST']._serialized_end=165
-  _globals['_PARAMETERS']._serialized_start=167
-  _globals['_PARAMETERS']._serialized_end=213
-  _globals['_MODEL']._serialized_start=215
-  _globals['_MODEL']._serialized_end=287
-  _globals['_TRAINREQUEST']._serialized_start=289
-  _globals['_TRAINREQUEST']._serialized_end=368
-  _globals['_METRIC']._serialized_start=370
-  _globals['_METRIC']._serialized_end=407
-  _globals['_TRAINRESPONSE']._serialized_start=409
-  _globals['_TRAINRESPONSE']._serialized_end=484
-  _globals['_FORECASTREQUEST']._serialized_start=486
-  _globals['_FORECASTREQUEST']._serialized_end=555
-  _globals['_FORECASTRESPONSE']._serialized_start=557
-  _globals['_FORECASTRESPONSE']._serialized_end=612
-  _globals['_SYBIL']._serialized_start=614
-  _globals['_SYBIL']._serialized_end=730
+  _globals['_SCALARVALUE']._serialized_start=15
+  _globals['_SCALARVALUE']._serialized_end=105
+  _globals['_SCALARVALUELIST']._serialized_start=107
+  _globals['_SCALARVALUELIST']._serialized_end=154
+  _globals['_PARAMETERS']._serialized_start=156
+  _globals['_PARAMETERS']._serialized_end=197
+  _globals['_MODEL']._serialized_start=199
+  _globals['_MODEL']._serialized_end=266
+  _globals['_TRAINREQUEST']._serialized_start=268
+  _globals['_TRAINREQUEST']._serialized_end=337
+  _globals['_METRIC']._serialized_start=339
+  _globals['_METRIC']._serialized_end=376
+  _globals['_TRAINRESPONSE']._serialized_start=378
+  _globals['_TRAINRESPONSE']._serialized_end=448
+  _globals['_FORECASTREQUEST']._serialized_start=450
+  _globals['_FORECASTREQUEST']._serialized_end=514
+  _globals['_FORECASTRESPONSE']._serialized_start=516
+  _globals['_FORECASTRESPONSE']._serialized_end=566
+  _globals['_SYBIL']._serialized_start=568
+  _globals['_SYBIL']._serialized_end=664
 # @@protoc_insertion_point(module_scope)

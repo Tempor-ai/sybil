@@ -16,12 +16,12 @@ class SybilStub(object):
             channel: A grpc.Channel.
         """
         self.Train = channel.unary_unary(
-                '/temp.Sybil/Train',
+                '/Sybil/Train',
                 request_serializer=sybil__pb2.TrainRequest.SerializeToString,
                 response_deserializer=sybil__pb2.TrainResponse.FromString,
                 )
         self.Forecast = channel.unary_unary(
-                '/temp.Sybil/Forecast',
+                '/Sybil/Forecast',
                 request_serializer=sybil__pb2.ForecastRequest.SerializeToString,
                 response_deserializer=sybil__pb2.ForecastResponse.FromString,
                 )
@@ -58,7 +58,7 @@ def add_SybilServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'temp.Sybil', rpc_method_handlers)
+            'Sybil', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -78,7 +78,7 @@ class Sybil(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/temp.Sybil/Train',
+        return grpc.experimental.unary_unary(request, target, '/Sybil/Train',
             sybil__pb2.TrainRequest.SerializeToString,
             sybil__pb2.TrainResponse.FromString,
             options, channel_credentials,
@@ -95,7 +95,7 @@ class Sybil(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/temp.Sybil/Forecast',
+        return grpc.experimental.unary_unary(request, target, '/Sybil/Forecast',
             sybil__pb2.ForecastRequest.SerializeToString,
             sybil__pb2.ForecastResponse.FromString,
             options, channel_credentials,

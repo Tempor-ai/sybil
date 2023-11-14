@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package temp;
+// package temp;
 
 // The Scalar Value can be string, int32, or float.
 message ScalarValue {
