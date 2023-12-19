@@ -7,6 +7,16 @@ import pickle
 import blosc
 import base64
 from models.modelfactory import ModelFactory
+import time
+import logging
+import argparse
+from concurrent import futures
+
+## Host and port on which the server listens ##
+parser = argparse.ArgumentParser(description='')
+parser.add_argument("--host", type=str, default="127.0.0.1",  help= "host" )
+parser.add_argument("--port", type=int, default=8010,  help= "port" )
+args = parser.parse_args()
 
 class SybilService(sybil_pb2_grpc.SybilServicer):
 
@@ -58,3 +68,21 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
 
         # Return the response
         return ForecastResponse(data=response_data)
+
+def serve():
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    sybil_pb2_grpc.add_SybilServicer_to_server(SybilService(), server)
+    server.add_insecure_port('{}:{}'.format(args.host, args.port))
+    server.start()
+    _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+    print('Server start')
+
+    try:
+        while True:
+            time.sleep(_ONE_DAY_IN_SECONDS)
+    except KeyboardInterrupt:
+        server.stop(0)
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    serve()
