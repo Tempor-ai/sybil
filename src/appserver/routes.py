@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 import pickle
 import pandas as pd
-from .models.modelfactory import ModelFactory
+from models.modelfactory import ModelFactory
 from typing import Union, List
 import blosc
 import base64

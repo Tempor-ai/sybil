@@ -1,7 +1,7 @@
 # Local
 protocol: http
 host: localhost
-port: 80
+port: 8000
 
 # UAT
 # protocol: https
