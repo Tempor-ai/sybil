@@ -25,6 +25,7 @@ class Model(BaseModel):
     scorers: Union[List[str], None] = None
     params: Union[Parameters, None] = None
 
+Parameters.update_forward_refs()
 
 class TrainRequest(BaseModel):
     data: List[List[DATASET_VALUE]]
