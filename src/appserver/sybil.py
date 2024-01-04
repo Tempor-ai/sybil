@@ -11,6 +11,8 @@ import time
 import logging
 import argparse
 from concurrent import futures
+import google.protobuf.json_format
+import json
 
 ## Host and port on which the server listens ##
 parser = argparse.ArgumentParser(description='')
@@ -18,11 +20,12 @@ parser.add_argument("--host", type=str, default="127.0.0.1",  help= "host" )
 parser.add_argument("--port", type=int, default=8010,  help= "port" )
 args = parser.parse_args()
 
+
 class SybilService(sybil_pb2_grpc.SybilServicer):
 
     def Train(self, request, context):
         # Convert the request data to a DataFrame
-        data = [[scalar_value.value for scalar_value in scalar_value_list.values] 
+        data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
                 for scalar_value_list in request.data]
 
         # Convert the list of lists to a DataFrame
@@ -31,6 +34,9 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
         # Prepare the model (similar to the existing logic in your FastAPI app)
         # If model_info is None, use ModelFactory defaults
         model_info = request.model
+        model_info = google.protobuf.json_format.MessageToJson(request.model, use_integers_for_enums=False, including_default_value_fields=False, preserving_proto_field_name=True)
+        model_info = json.loads(model_info)
+        print(model_info)
         if not model_info:
             model = ModelFactory.create_model(dataset)
         else:
@@ -53,13 +59,13 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
         model = pickle.loads(blosc.decompress(base64.b64decode(request.model)))
 
         # Convert request data to DataFrame
-        forecast_data = [[scalar_value.value for scalar_value in scalar_value_list.values] 
+        forecast_data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
                          for scalar_value_list in request.data]
         dataset = pd.DataFrame(forecast_data)
 
         # Perform the forecast (based on your existing logic)
         output = model.predict(lookforward=len(forecast_data), X=dataset).reset_index()
-        output['index'] = output['index'].apply(lambda x: x.isoformat())
+        #output['index'] = output['index'].apply(lambda x: x.isoformat())
         forecast_output = output.values.tolist()
 
         # Convert forecast output to gRPC format
