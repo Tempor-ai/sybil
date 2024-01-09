@@ -26,9 +26,11 @@ message Model {
     Parameters params = 3;
 }
 
+
 message TrainRequest {
     repeated ScalarValueList data = 1;
     Model model = 2;
+    string json = 3;
 }
 
 message Metric {
@@ -45,6 +47,7 @@ message TrainResponse {
 message ForecastRequest {
     string model = 1; // Base64 encoded string
     repeated ScalarValueList data = 2;
+    string json = 3;
 }
 
 message ForecastResponse {

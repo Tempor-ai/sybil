@@ -17,25 +17,44 @@ import json
 ## Host and port on which the server listens ##
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--host", type=str, default="127.0.0.1",  help= "host" )
-parser.add_argument("--port", type=int, default=8010,  help= "port" )
+parser.add_argument("--port", type=int, default=8020,  help= "port" )
 args = parser.parse_args()
 
+
+def prepare_grpc_req(request):
+    # Convert the request data to a DataFrame
+    data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
+            for scalar_value_list in request.data]
+    # Prepare the model (similar to the existing logic in your FastAPI app)
+    # If model_info is None, use ModelFactory defaults
+    model_info = google.protobuf.json_format.MessageToJson(request.model_info, use_integers_for_enums=False, including_default_value_fields=False, preserving_proto_field_name=True)
+    model_info = json.loads(model_info)
+
+
+def prepare_jsonstr_req(request):
+    # JSON Schema Validation needed here
+
+    print(request.json)
+
+    request_dict = json.loads(request.json)
+
+    return request_dict["data"], request_dict["model"]
 
 class SybilService(sybil_pb2_grpc.SybilServicer):
 
     def Train(self, request, context):
-        # Convert the request data to a DataFrame
-        data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
-                for scalar_value_list in request.data]
+
+        data = None
+        model_info = None
+
+        if request.json is None:
+            data, model_info = prepare_grpc_req(request)
+        else:
+            data, model_info = prepare_jsonstr_req(request)
 
         # Convert the list of lists to a DataFrame
         dataset = pd.DataFrame(data)
 
-        # Prepare the model (similar to the existing logic in your FastAPI app)
-        # If model_info is None, use ModelFactory defaults
-        model_info = request.model
-        model_info = google.protobuf.json_format.MessageToJson(request.model, use_integers_for_enums=False, including_default_value_fields=False, preserving_proto_field_name=True)
-        model_info = json.loads(model_info)
         print(model_info)
         if not model_info:
             model = ModelFactory.create_model(dataset)

@@ -11,29 +11,12 @@ import sybil_pb2_grpc
 # Parsing command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="127.0.0.1", type=str, help="host")
-parser.add_argument("--port", default=8010, type=int, help="port")
+parser.add_argument("--port", default=8020, type=int, help="port")
 args = parser.parse_args()
 
 def SybilClient(stub):
     # Example usage of the Train method
-    train_request = sybil_pb2.TrainRequest(
-        data=[sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=1),sybil_pb2.ScalarValue(int_value=1)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=2),sybil_pb2.ScalarValue(int_value=2)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=3),sybil_pb2.ScalarValue(int_value=3)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=4),sybil_pb2.ScalarValue(int_value=4)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=5),sybil_pb2.ScalarValue(int_value=5)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=6),sybil_pb2.ScalarValue(int_value=6)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=7),sybil_pb2.ScalarValue(int_value=7)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=8),sybil_pb2.ScalarValue(int_value=8)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=9),sybil_pb2.ScalarValue(int_value=9)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=10),sybil_pb2.ScalarValue(int_value=10)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=11),sybil_pb2.ScalarValue(int_value=11)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=12),sybil_pb2.ScalarValue(int_value=12)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=13),sybil_pb2.ScalarValue(int_value=13)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=14),sybil_pb2.ScalarValue(int_value=14)]),
-              sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=15),sybil_pb2.ScalarValue(int_value=15)])],  # Populate with ScalarValueList according to your data structure
-        model=sybil_pb2.Model(type="darts_autotheta", scorers=["mape", "smape"], params={})  # Populate model and parameters
-    )
+    train_request = sybil_pb2.TrainRequest(json='{"data":[[1,1],[2,2],[3,3]], "model": {"type": "darts_autotheta", "scorers": ["smape"]}}')
 
     start_time = time.time()
     train_response = stub.Train(train_request)
@@ -43,6 +26,7 @@ def SybilClient(stub):
     print("{:.3f}s\nModel: {}\nType: {}\nMetrics: {}".format(response_time, train_response.model, train_response.type, train_response.metrics))
     print('\n########################################################################################\n')
 
+    exit(1)
     # Example usage of the Forecast method
     forecast_request = sybil_pb2.ForecastRequest(
         model=train_response.model,  # Base64 encoded string of your model
