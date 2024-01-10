@@ -30,15 +30,35 @@ def prepare_grpc_req(request):
     model_info = google.protobuf.json_format.MessageToJson(request.model_info, use_integers_for_enums=False, including_default_value_fields=False, preserving_proto_field_name=True)
     model_info = json.loads(model_info)
 
+    return data, model_info
+
 
 def prepare_jsonstr_req(request):
     # JSON Schema Validation needed here
 
-    print(request.json)
+    request_dict = json.loads(request.json)
+
+    return request_dict["data"], request_dict["model"]
+
+
+def prepare_grpc_req_forecast(request):
+    # Convert the request data to a DataFrame
+    data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
+            for scalar_value_list in request.data]
+
+    # If model_info is None, use ModelFactory defaults
+    model = request.model
+
+    return data, model
+
+
+def prepare_jsonstr_req_forecast(request):
+    # JSON Schema Validation needed here
 
     request_dict = json.loads(request.json)
 
     return request_dict["data"], request_dict["model"]
+
 
 class SybilService(sybil_pb2_grpc.SybilServicer):
 
@@ -74,12 +94,19 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
         return TrainResponse(model=output_model, type=training_info["type"], metrics=metrics)
     
     def Forecast(self, request, context):
+
+        forecast_data = None
+        model = None
+
+        if request.json is None:
+            forecast_data, model = prepare_grpc_req_forecast(request)
+        else:
+            forecast_data, model = prepare_jsonstr_req_forecast(request)
+
         # Decode the model from the request
-        model = pickle.loads(blosc.decompress(base64.b64decode(request.model)))
+        model = pickle.loads(blosc.decompress(base64.b64decode(model)))
 
         # Convert request data to DataFrame
-        forecast_data = [[getattr(scalar_value, scalar_value.WhichOneof('value')) for scalar_value in scalar_value_list.values]
-                         for scalar_value_list in request.data]
         dataset = pd.DataFrame(forecast_data)
 
         # Perform the forecast (based on your existing logic)

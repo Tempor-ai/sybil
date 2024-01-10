@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 def SybilClient(stub):
     # Example usage of the Train method
-    train_request = sybil_pb2.TrainRequest(json='{"data":[[1,1],[2,2],[3,3]], "model": {"type": "darts_autotheta", "scorers": ["smape"]}}')
+    train_request = sybil_pb2.TrainRequest(json='{"data":[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12],[13,13],[14,14],[15,15]], "model": {"type": "darts_autotheta", "scorers": ["smape"]}}')
 
     start_time = time.time()
     train_response = stub.Train(train_request)
@@ -26,21 +26,8 @@ def SybilClient(stub):
     print("{:.3f}s\nModel: {}\nType: {}\nMetrics: {}".format(response_time, train_response.model, train_response.type, train_response.metrics))
     print('\n########################################################################################\n')
 
-    exit(1)
     # Example usage of the Forecast method
-    forecast_request = sybil_pb2.ForecastRequest(
-        model=train_response.model,  # Base64 encoded string of your model
-        data=[sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=16)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=17)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=18)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=19)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=20)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=21)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=22)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=23)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=24)]),
-            sybil_pb2.ScalarValueList(values=[sybil_pb2.ScalarValue(int_value=25)])]  # Populate with ScalarValueList for forecast
-    )
+    forecast_request = sybil_pb2.ForecastRequest(json='{"model": "%s", "data": [16, 17, 18, 19, 20,21, 22, 23, 24, 25]}' % train_response.model)
 
     start_time = time.time()
     forecast_response = stub.Forecast(forecast_request)
