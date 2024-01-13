@@ -6,7 +6,7 @@ import pandas as pd
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
@@ -46,7 +46,8 @@ class ModelFactory:
             'stats_autoets': ('statsforecast.models', 'AutoETS'),
             'darts_autotheta': ('darts.models', 'StatsForecastAutoTheta'),
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
-            'darts_autoets': ('darts.models', 'StatsForecastAutoETS')
+            'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
+            'NeuralProphet_model': ('external_models', '')
         }
 
         module_name, class_name = models[type]
@@ -79,6 +80,18 @@ class ModelFactory:
         elif type in ('darts_autotheta', 'darts_autoarima', 'darts_autoets'):
             model_instance = ModelFactory._get_model_instance(type, season_length)
             predictor = DartsWrapper(darts_model=model_instance, type=type, scorers=scorer_funcs)
+        elif type in ('NeuralProphet_model'):
+            base_model_config = {
+                "params": {
+                "changepoints_range": 0.2,
+                "epochs": 2,
+                "growth": "off"
+                },
+                "metrics": [],
+                "type": "neuralprophet",
+            }
+            model_instance = ModelFactory._get_model_instance(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
+            predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, base_model_config=base_model_config)
         elif "meta_" in type:
             base_models_kwargs = DEFAULT_BASE_MODELS if not params else params['base_models']
             base_models = [ModelFactory.create_model(dataset, **model_kwargs) for model_kwargs in base_models_kwargs]

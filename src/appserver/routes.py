@@ -9,6 +9,7 @@ import blosc
 import base64
 import logging
 from fastapi.encoders import jsonable_encoder
+from appserver.rest_client import rest_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,7 +35,6 @@ class TrainRequest(BaseModel):
 class Metric(BaseModel):
     type: str
     value: float
-
 
 class TrainResponse(BaseModel):
     model: str
@@ -114,3 +114,10 @@ async def forecast(forecast_request: ForecastRequest):
     output = output.values.tolist()
 
     return ForecastResponse(data=output)
+
+
+@router.get('/test')
+async def test():
+    client = rest_client()
+    client.run()
+    return "success"

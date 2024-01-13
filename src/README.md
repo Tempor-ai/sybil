@@ -35,3 +35,6 @@ pip3 install -r requirements.txt
 cd {repo_location}/src
 uvicorn appserver:app --reload
 ```
+
+Do we need to keep the tran testing split in NP or do we want to override it with Sybil testing split.
+
