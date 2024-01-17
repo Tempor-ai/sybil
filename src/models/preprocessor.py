@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from typing import Union
 from abc import ABC, abstractmethod
+from darts import TimeSeries
+from darts.utils.missing_values import fill_missing_values
 
 
 class AbstractPreprocessor(ABC):
@@ -112,6 +114,29 @@ class SimpleImputer(AbstractPreprocessor):
 
     def inverse_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Inverse transform X back to original with missing values."""
+        X_missing = X.copy()
+        X_missing[self.fill_mask] = np.nan
+        return X_missing
+
+class FillMissingValues(AbstractPreprocessor):
+    """
+    Wrapper for Darts fill_missing_values function.
+    """
+
+    def __init__(self, fill="auto"):
+        self.fill = fill
+        self.fill_mask = None
+
+    def fit(self, X: pd.DataFrame) -> None:
+        pass
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        self.fill_mask = X.isna()
+        return fill_missing_values(
+            series=TimeSeries.from_dataframe(X), fill=self.fill
+        ).pd_dataframe()
+
+    def inverse_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         X_missing = X.copy()
         X_missing[self.fill_mask] = np.nan
         return X_missing

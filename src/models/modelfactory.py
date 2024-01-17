@@ -5,7 +5,7 @@ Module to create prediction pipelines.
 import pandas as pd
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
-from .preprocessor import MinMaxScaler, SimpleImputer
+from .preprocessor import MinMaxScaler, SimpleImputer, FillMissingValues
 from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR
 from .pipeline import Pipeline
 
@@ -114,7 +114,8 @@ class ModelFactory:
         :return: An instance of the specified preprocessor.
         """
         preprocessors_map = {'minmaxscaler': MinMaxScaler,
-                             'simpleimputer': SimpleImputer}
+                             'simpleimputer': SimpleImputer,
+                             'fillmissing': FillMissingValues}
         type = preprocessor.get('type')
         kwargs = preprocessor.get('param', {})
         if type in preprocessors_map:
