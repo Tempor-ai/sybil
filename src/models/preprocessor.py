@@ -118,7 +118,7 @@ class SimpleImputer(AbstractPreprocessor):
         X_missing[self.fill_mask] = np.nan
         return X_missing
 
-class FillMissingValues(AbstractPreprocessor):
+class DartsImputer(AbstractPreprocessor):
     """
     Wrapper for Darts fill_missing_values function.
     """
