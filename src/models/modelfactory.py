@@ -20,7 +20,8 @@ META_BASE_MODELS = [
     #{'type': 'stats_autoarima'},
     #{'type': 'stats_autoets'}
 ]
-META_PREPROCESSORS = [{'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+META_PREPROCESSORS = [{'type': 'dartsimputer'},
+                    # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
                       {'type': 'minmaxscaler'}]
 
 
