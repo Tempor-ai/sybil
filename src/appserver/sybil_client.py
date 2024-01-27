@@ -11,12 +11,14 @@ import sybil_pb2_grpc
 # Parsing command-line arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--host", default="127.0.0.1", type=str, help="host")
-parser.add_argument("--port", default=8020, type=int, help="port")
+parser.add_argument("--port", default=7000, type=int, help="port")
 args = parser.parse_args()
 
 def SybilClient(stub):
-    # Example usage of the Train method
-    train_request = sybil_pb2.TrainRequest(json='{"data":[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12],[13,13],[14,14],[15,15]], "model": {"type": "darts_autotheta", "scorers": ["smape"]}}')
+
+    with open("/home/ubuntu/temporAI/sybil/examples/json/api_call_example_tc2_train_request.json", "r") as request_fh:
+        # Example usage of the Train method
+        train_request = sybil_pb2.TrainRequest(json=request_fh.read())
 
     start_time = time.time()
     train_response = stub.Train(train_request)
@@ -26,8 +28,9 @@ def SybilClient(stub):
     print("{:.3f}s\nModel: {}\nType: {}\nMetrics: {}".format(response_time, train_response.model, train_response.type, train_response.metrics))
     print('\n########################################################################################\n')
 
-    # Example usage of the Forecast method
-    forecast_request = sybil_pb2.ForecastRequest(json='{"model": "%s", "data": [16, 17, 18, 19, 20,21, 22, 23, 24, 25]}' % train_response.model)
+    with open("/home/ubuntu/temporAI/sybil/examples/json/api_call_example_tc1_forecast_request.json", "r") as request_fh:
+        # Example usage of the Forecast method
+        forecast_request = sybil_pb2.ForecastRequest(json=request_fh.read())
 
     start_time = time.time()
     forecast_response = stub.Forecast(forecast_request)

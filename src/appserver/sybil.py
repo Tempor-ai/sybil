@@ -17,7 +17,7 @@ import json
 ## Host and port on which the server listens ##
 parser = argparse.ArgumentParser(description='')
 parser.add_argument("--host", type=str, default="127.0.0.1",  help= "host" )
-parser.add_argument("--port", type=int, default=8020,  help= "port" )
+parser.add_argument("--port", type=int, default=7000,  help= "port" )
 args = parser.parse_args()
 
 
@@ -38,7 +38,13 @@ def prepare_jsonstr_req(request):
 
     request_dict = json.loads(request.json)
 
-    return request_dict["data"], request_dict["model"]
+    model = None
+    
+    if "model" in request_dict:
+        model = request_dict["model"]
+
+
+    return request_dict["data"], model
 
 
 def prepare_grpc_req_forecast(request):
@@ -73,9 +79,8 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
             data, model_info = prepare_jsonstr_req(request)
 
         # Convert the list of lists to a DataFrame
-        dataset = pd.DataFrame(data)
+        dataset = ModelFactory.prepare_dataset(pd.DataFrame(data))
 
-        print(model_info)
         if not model_info:
             model = ModelFactory.create_model(dataset)
         else:
@@ -85,7 +90,8 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
         training_info = model.train(dataset)
 
         # Serialize, compress, and encode the model
-        output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model']))).decode('utf-8')
+        #output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model']))).decode('utf-8')
+        output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model'])))
 
         # Prepare metrics
         metrics = [Metric(type=metric_type, value=value) for metric_type, value in training_info["metrics"].items()]
@@ -106,11 +112,20 @@ class SybilService(sybil_pb2_grpc.SybilServicer):
         # Decode the model from the request
         model = pickle.loads(blosc.decompress(base64.b64decode(model)))
 
+
+		# TODO Model currently does not support dates, array is converted into number of steps
+        if isinstance(forecast_data[0], list):  # Forecast request has exogenous variables
+            dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_data))
+        else:
+            dataset = None
+        num_steps = len(forecast_data)
+
+
         # Convert request data to DataFrame
-        dataset = pd.DataFrame(forecast_data)
+        #dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_data))
 
         # Perform the forecast (based on your existing logic)
-        output = model.predict(lookforward=len(forecast_data), X=dataset).reset_index()
+        output = model.predict(lookforward=num_steps, X=dataset).reset_index()
         #output['index'] = output['index'].apply(lambda x: x.isoformat())
         forecast_output = output.values.tolist()
 
