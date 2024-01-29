@@ -5,7 +5,7 @@ Module to create prediction pipelines.
 import pandas as pd
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
-from .preprocessor import MinMaxScaler, SimpleImputer
+from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
 from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR
 from .pipeline import Pipeline
 
@@ -20,7 +20,8 @@ META_BASE_MODELS = [
     #{'type': 'stats_autoarima'},
     #{'type': 'stats_autoets'}
 ]
-META_PREPROCESSORS = [{'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+META_PREPROCESSORS = [{'type': 'dartsimputer'},
+                    # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
                       {'type': 'minmaxscaler'}]
 
 
@@ -114,7 +115,8 @@ class ModelFactory:
         :return: An instance of the specified preprocessor.
         """
         preprocessors_map = {'minmaxscaler': MinMaxScaler,
-                             'simpleimputer': SimpleImputer}
+                             'simpleimputer': SimpleImputer,
+                             'dartsimputer': DartsImputer}
         type = preprocessor.get('type')
         kwargs = preprocessor.get('param', {})
         if type in preprocessors_map:
