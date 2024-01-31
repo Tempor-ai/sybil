@@ -17,7 +17,13 @@ DATASET_VALUE = Union[str, int, float]
 
 
 class Parameters(BaseModel):
+    preprocessors: Union[List['Preprocessor'], None] = None
     base_models: Union[List['Model'], None] = None
+
+
+class Preprocessor(BaseModel):
+    type: str
+    params: Union[Parameters, None] = None
 
 
 class Model(BaseModel):
@@ -53,6 +59,8 @@ async def train(train_request: TrainRequest):
     dataset = ModelFactory.prepare_dataset(pd.DataFrame(train_request.data))
 
     # Get optional user specs
+    print(train_request)
+    print()
     model_info = train_request.model
 
     # If user did not pass in the model spec
@@ -60,7 +68,11 @@ async def train(train_request: TrainRequest):
         # Create model objects with the ModelFactory defaults
         model = ModelFactory.create_model(dataset)
     else:
+        print(model_info)
+        print()
         model_info_json = jsonable_encoder(model_info)
+        print(model_info_json)
+        print()
         # Create model objects from the spec user passed in
         model = ModelFactory.create_model(dataset=dataset, **model_info_json)
 
