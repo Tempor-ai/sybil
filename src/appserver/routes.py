@@ -71,8 +71,6 @@ async def train(train_request: TrainRequest):
         print(model_info)
         print()
         model_info_json = jsonable_encoder(model_info)
-        print(model_info_json)
-        print()
         # Create model objects from the spec user passed in
         model = ModelFactory.create_model(dataset=dataset, **model_info_json)
 
