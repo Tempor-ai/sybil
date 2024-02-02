@@ -68,8 +68,6 @@ async def train(train_request: TrainRequest):
         # Create model objects with the ModelFactory defaults
         model = ModelFactory.create_model(dataset)
     else:
-        print(model_info)
-        print()
         model_info_json = jsonable_encoder(model_info)
         # Create model objects from the spec user passed in
         model = ModelFactory.create_model(dataset=dataset, **model_info_json)
