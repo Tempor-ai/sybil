@@ -17,7 +17,13 @@ DATASET_VALUE = Union[str, int, float]
 
 
 class Parameters(BaseModel):
+    preprocessors: Union[List['Preprocessor'], None] = None
     base_models: Union[List['Model'], None] = None
+
+
+class Preprocessor(BaseModel):
+    type: str
+    params: Union[Parameters, None] = None
 
 
 class Model(BaseModel):

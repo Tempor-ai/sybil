@@ -11,18 +11,20 @@ from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
 META_BASE_MODELS = [
-    #{'type': 'darts_rnn'},
+    # {'type': 'darts_rnn'},
     {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
-    #{'type': 'stats_autotheta'},
-    #{'type': 'stats_autoarima'},
-    #{'type': 'stats_autoets'}
+    # {'type': 'stats_autotheta'},
+    # {'type': 'stats_autoarima'},
+    # {'type': 'stats_autoets'}
 ]
-META_PREPROCESSORS = [{'type': 'dartsimputer'},
-                    # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
-                      {'type': 'minmaxscaler'}]
+META_PREPROCESSORS = [
+    {'type': 'dartsimputer'},
+    # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+    {'type': 'minmaxscaler'}
+]
 
 
 class ModelFactory:
@@ -80,8 +82,17 @@ class ModelFactory:
             params['base_models'] = [ModelFactory.create_model(dataset, **kws)
                                      for kws in base_models_kwargs]
             ModelClass = MetaModelWA if type == 'meta_wa' else MetaModelLR
-            predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
-            params.setdefault('preprocessors', META_PREPROCESSORS)
+            if params.get('preprocessors') is None:
+                # If not custom preprocessors, use default META_PREPROCESSORS
+                predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
+                params.setdefault('preprocessors', META_PREPROCESSORS)
+            else:
+                # QUICK FIX: Remove custom preprocessors for ModelClass, then add back
+                # TO-DO: move preprocessors outside of create_model() and params 
+                preprocessors = params['preprocessors'].copy()
+                del params['preprocessors']
+                predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
+                params.setdefault('preprocessors', preprocessors)
         else:
             # Base model case
             if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
