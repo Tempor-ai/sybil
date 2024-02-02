@@ -59,8 +59,6 @@ async def train(train_request: TrainRequest):
     dataset = ModelFactory.prepare_dataset(pd.DataFrame(train_request.data))
 
     # Get optional user specs
-    print(train_request)
-    print()
     model_info = train_request.model
 
     # If user did not pass in the model spec
