@@ -87,7 +87,8 @@ class ModelFactory:
                 predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
                 params.setdefault('preprocessors', META_PREPROCESSORS)
             else:
-                # Remove custom preprocessors for ModelClass, then add back
+                # QUICK FIX: Remove custom preprocessors for ModelClass, then add back
+                # TO-DO: move preprocessors outside of create_model() and params 
                 preprocessors = params['preprocessors'].copy()
                 del params['preprocessors']
                 predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
