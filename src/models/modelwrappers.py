@@ -22,10 +22,12 @@ class AbstractModel(ABC):
     @param type: The type of the model, also used to build a new model from the Factory.
     @param scorers: A list of scorers to use for evaluating metrics.
     """
-    def __init__(self, type: str, scorers: Union[METRIC_TYPE, List[METRIC_TYPE]]):
+    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], rnn_model:str = None, rnn_model_ckpt:str = None,):
         self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
         self.train_idx = None
+        self.rnn_model = rnn_model
+        self.rnn_model_ckpt =rnn_model_ckpt
 
     def score(self, y: pd.Series, X: pd.DataFrame=None) -> dict:
         """

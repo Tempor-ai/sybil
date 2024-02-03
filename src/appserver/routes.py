@@ -74,8 +74,11 @@ async def train(train_request: TrainRequest):
     training_info = model.train(dataset)
 
     # Serialize, compress, and finally encode model in base64 ASCII, so it can be sent in JSON
-    output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model'])))
+    # output_model = base64.b64encode(blosc.compress(pickle.dumps(training_info['model'])))
 
+    output_model = ModelFactory.save(training_info['model'])
+
+    
     # Build metrics JSON for response
     metrics = []
     for metric_type in training_info["metrics"]:
@@ -107,8 +110,8 @@ async def forecast(forecast_request: ForecastRequest):
     logger.debug("ForecastRequest: %s", forecast_request)
 
     # Decode model from base64 ASCII, decompress, and final deserialize
-    model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
-
+    # model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
+    model = ModelFactory.load(forecast_request.model)
     # TODO Model currently does not support dates, array is converted into number of steps
     if isinstance(forecast_request.data[0], list):  # Forecast request has exogenous variables
         dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.data))
