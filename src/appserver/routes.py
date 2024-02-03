@@ -19,18 +19,20 @@ DATASET_VALUE = Union[str, int, float]
 class Parameters(BaseModel):
     preprocessors: Union[List['Preprocessor'], None] = None
     base_models: Union[List['Model'], None] = None
+    model_type: Union[str, None] = None
 
+class PreprocessorParameters(BaseModel):
+    strategy: Union[str, None] = None
 
 class Preprocessor(BaseModel):
     type: str
-    params: Union[Parameters, None] = None
-
+    params: Union[PreprocessorParameters, None] = None
 
 class Model(BaseModel):
     type: str
     scorers: Union[List[str], None] = None
-    params: Union[Parameters, None] = None
-
+    # params: Union[Parameters, None] = None
+    params: Union[Parameters, None] = Parameters()
 
 class TrainRequest(BaseModel):
     data: List[List[DATASET_VALUE]]

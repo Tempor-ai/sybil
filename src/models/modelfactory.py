@@ -110,7 +110,22 @@ class ModelFactory:
                 if 'lags' not in params:
                     params.setdefault('lags', season_length)
             if type == 'darts_rnn':
+                print("darts_rnn==============================")
+                print(params)
+                model_type = params['model_type']
+                print("model_type:")
+                print(model_type)
+                del params['preprocessors']
+                del params['base_models']
+                del params['model_type']
+                print("darts_rnn==============================")
+                print(params)
+                print("model_type:")
+                print(model_type)
+                params.setdefault('model', model_type)
                 params.setdefault('input_chunk_length', season_length)
+                print("darts_rnn==============================")
+                print(params)
 
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
