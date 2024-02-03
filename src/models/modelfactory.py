@@ -17,7 +17,7 @@ from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
 META_BASE_MODELS = [
-    # {'type': 'darts_rnn'},
+    {'type': 'darts_rnn'},
     {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
