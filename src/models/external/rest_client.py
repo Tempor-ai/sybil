@@ -21,9 +21,8 @@ class rest_client:
     def train(dataset, base_model_request):
         # Add your training logic here
         # from config file
-        
-        cwd = os.getcwd()
-        config_file=os.path.join(cwd, 'src/models/external/config.yml') 
+        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        config_file=os.path.join(filePath, 'config.yml') 
 
         with open(config_file, 'r') as file:
             url_dict = yaml.safe_load(file)
@@ -61,8 +60,8 @@ class rest_client:
         }
 
         # from config file
-        cwd = os.getcwd()
-        config_file=os.path.join(cwd, 'src/models/external/config.yml') 
+        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        config_file=os.path.join(filePath, 'config.yml') 
 
         with open(config_file, 'r') as file:
             url_dict = yaml.safe_load(file)
