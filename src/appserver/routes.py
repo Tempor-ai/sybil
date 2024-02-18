@@ -9,7 +9,7 @@ import blosc
 import base64
 import logging
 from fastapi.encoders import jsonable_encoder
-from appserver.rest_client import rest_client
+from models.external.rest_client import rest_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -25,6 +25,7 @@ class Model(BaseModel):
     type: str
     scorers: Union[List[str], None] = None
     params: Union[Parameters, None] = None
+    external_params: Union[dict, None] = None
 
 
 class TrainRequest(BaseModel):
@@ -107,7 +108,10 @@ async def forecast(forecast_request: ForecastRequest):
     if isinstance(forecast_request.data[0], list):  # Forecast request has exogenous variables
         dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.data))
     else:
-        dataset = None
+        dataset = pd.DataFrame(forecast_request.data)
+        dataset[0] = pd.to_datetime(dataset[0])
+        dataset.set_index(0, inplace=True)
+        
     num_steps = len(forecast_request.data)
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
     output['index'] = output['index'].apply(lambda x:x.isoformat())
@@ -115,9 +119,3 @@ async def forecast(forecast_request: ForecastRequest):
 
     return ForecastResponse(data=output)
 
-
-@router.get('/test')
-async def test():
-    client = rest_client()
-    client.run()
-    return "success"
