@@ -35,6 +35,5 @@ class NeuralProphet:
         # final_pred = pd.merge(data_orig, forecast_df, left_index=True, right_index=True, how='outer')
 
         # pred = final_pred.values.tolist()
-        print(pred)
         return pred
 

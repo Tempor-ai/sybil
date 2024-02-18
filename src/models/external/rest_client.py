@@ -11,6 +11,7 @@ import pickle
 import pandas as pd
 from models.modelfactory import ModelFactory
 from typing import Union, List
+import os
 import blosc
 import base64
 import logging
@@ -20,10 +21,16 @@ class rest_client:
     def train(dataset, base_model_request):
         # Add your training logic here
         # from config file
-        # URL to our SYBIL AWS service
-        protocol = "http"
-        host = "localhost"
-        port = 8001
+        
+        cwd = os.getcwd()
+        config_file=os.path.join(cwd, 'src/models/external/config.yml') 
+
+        with open(config_file, 'r') as file:
+            url_dict = yaml.safe_load(file)
+
+        protocol = url_dict['protocol']
+        host = url_dict['host']
+        port = url_dict['port']
         endpoint = 'train'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
@@ -39,7 +46,7 @@ class rest_client:
             'model': base_model_request  # (optional) can be commented out
         }
         response = requests.post(url, json=api_json)
-        print(response)
+
         return response.json().get('model')
             
     def forecast(dataset, model):
@@ -54,10 +61,15 @@ class rest_client:
         }
 
         # from config file
-        # URL to our SYBIL AWS service
-        protocol = "http"
-        host = "localhost"
-        port = 8001
+        cwd = os.getcwd()
+        config_file=os.path.join(cwd, 'src/models/external/config.yml') 
+
+        with open(config_file, 'r') as file:
+            url_dict = yaml.safe_load(file)
+
+        protocol = url_dict['protocol']
+        host = url_dict['host']
+        port = url_dict['port']
         endpoint = 'forecast'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
