@@ -1,4 +1,4 @@
-class NeuralProphet:
+class OnboardNeuralProphet:
     def fit(self, dataset, base_model_request):
         import requests
         from models.external.rest_client import rest_client

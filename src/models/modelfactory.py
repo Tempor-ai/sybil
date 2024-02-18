@@ -57,7 +57,7 @@ class ModelFactory:
             'darts_autotheta': ('darts.models', 'StatsForecastAutoTheta'),
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
             'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
-            'neuralprophet': ('models.external.neuralprophet', 'NeuralProphet')
+            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet')
         }
 
         module_name, class_name = models[type]
