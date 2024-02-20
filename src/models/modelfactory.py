@@ -90,6 +90,7 @@ class ModelFactory:
             ModelClass = MetaModelWA if type == 'meta_wa' else MetaModelLR
             if params.get('preprocessors') is None:
                 # If not custom preprocessors, use default META_PREPROCESSORS
+                del params['preprocessors']
                 predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
                 params.setdefault('preprocessors', META_PREPROCESSORS)
             else:
