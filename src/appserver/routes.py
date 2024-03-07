@@ -9,7 +9,6 @@ import blosc
 import base64
 import logging
 from fastapi.encoders import jsonable_encoder
-from models.external.rest_client import rest_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
