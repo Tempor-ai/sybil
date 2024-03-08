@@ -9,6 +9,7 @@ import blosc
 import base64
 import pickle
 from darts.models.forecasting.rnn_model import RNNModel
+from darts.models import NaiveMean, NaiveSeasonal 
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
@@ -22,6 +23,8 @@ META_BASE_MODELS = [
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
+    {'type': 'darts_naive_mean'},
+    {'type': 'darts_naive_seasonal'}
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
     # {'type': 'stats_autoets'}
@@ -54,7 +57,9 @@ class ModelFactory:
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
             'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
             'darts_lightgbm': ('darts.models.forecasting.lgbm', 'LightGBMModel'),
-            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel')
+            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
+            'darts_naive_mean': ('darts.models', 'NaiveMean'),
+            'darts_naive_seasonal': ('darts.models', 'NaiveSeasonal')
         }
 
         module_name, class_name = models[type]
