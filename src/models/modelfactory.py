@@ -24,7 +24,7 @@ META_BASE_MODELS = [
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
     {'type': 'darts_naive_mean'},
-    {'type': 'darts_naive_seasonal'}
+    {'type': 'darts_naive_seasonal'},
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
     # {'type': 'stats_autoets'}
@@ -117,6 +117,8 @@ class ModelFactory:
                     params.setdefault('lags', season_length)
             if type == 'darts_rnn':
                 params.setdefault('input_chunk_length', season_length)
+            if type == 'darts_naive_seasonal':
+                params.setdefault('K', season_length)
 
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
