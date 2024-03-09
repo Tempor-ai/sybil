@@ -24,7 +24,7 @@ META_BASE_MODELS = [
     {'type': 'darts_autoets'},
     {'type': 'darts_naive'},
     {'type': 'darts_seasonalnaive'},
-    {'type': 'darts_linearmodel'},
+    {'type': 'darts_linearregression'},
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
     # {'type': 'stats_autoets'}
@@ -60,7 +60,7 @@ class ModelFactory:
             'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
             'darts_naive': ('darts.models', 'NaiveMovingAverage'),
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
-            'darts_linearmodel': ('darts.models', 'LinearRegressionModel'),
+            'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
             'darts_tbats': ('darts.models', 'TBATS')
         }
 
@@ -123,7 +123,7 @@ class ModelFactory:
                 params.setdefault('K', season_length)
             if type == 'darts_naive':
                 params.setdefault('input_chunk_length', 1)
-            if type == 'darts_linearmodel':
+            if type == 'darts_linearregression':
                 params.setdefault('lags', season_length)
             if type == 'darts_tbat':
                 params.setdefault('seasonal_periods', [season_length])
