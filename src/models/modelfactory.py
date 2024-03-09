@@ -22,6 +22,9 @@ META_BASE_MODELS = [
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
+    {'type': 'darts_naive'},
+    {'type': 'darts_seasonalnaive'},
+    {'type': 'darts_linearmodel'},
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
     # {'type': 'stats_autoets'}
@@ -54,7 +57,11 @@ class ModelFactory:
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
             'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
             'darts_lightgbm': ('darts.models.forecasting.lgbm', 'LightGBMModel'),
-            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel')
+            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
+            'darts_naive': ('darts.models', 'NaiveMovingAverage'),
+            'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
+            'darts_linearmodel': ('darts.models', 'LinearRegressionModel'),
+            'darts_tbats': ('darts.models', 'TBATS')
         }
 
         module_name, class_name = models[type]
@@ -112,6 +119,14 @@ class ModelFactory:
                     params.setdefault('lags', season_length)
             if type == 'darts_rnn':
                 params.setdefault('input_chunk_length', season_length)
+            if type == 'darts_seasonalnaive':
+                params.setdefault('K', season_length)
+            if type == 'darts_naive':
+                params.setdefault('input_chunk_length', 1)
+            if type == 'darts_linearmodel':
+                params.setdefault('lags', season_length)
+            if type == 'darts_tbat':
+                params.setdefault('seasonal_periods', [season_length])
 
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
