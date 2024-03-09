@@ -7,7 +7,7 @@ import uuid
 import pandas as pd
 import blosc
 import base64
-import picklel̥
+import pickle
 from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
@@ -60,7 +60,8 @@ class ModelFactory:
             'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
             'darts_naive': ('darts.models', 'NaiveMovingAverage'),
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
-            'darts_linearmodel': ('darts.models', 'LinearRegressionModel')
+            'darts_linearmodel': ('darts.models', 'LinearRegressionModel'),
+            'darts_tbats': ('darts.models', 'TBATS')
         }
 
         module_name, class_name = models[type]
@@ -124,6 +125,8 @@ class ModelFactory:
                 params.setdefault('input_chunk_length', 1)
             if type == 'darts_linearmodel':
                 params.setdefault('lags', season_length)
+            if type == 'darts_tbat':
+                params.setdefault('seasonal_periods', [season_length])
 
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
