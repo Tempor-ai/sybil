@@ -12,7 +12,7 @@ from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
@@ -94,7 +94,7 @@ class ModelFactory:
             base_models_kwargs = params.get('base_models', META_BASE_MODELS)
             params['base_models'] = [ModelFactory.create_model(dataset, **kws)
                                      for kws in base_models_kwargs]
-            ModelClass = MetaModelWA if type == 'meta_wa' else MetaModelLR
+            ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
             if params.get('preprocessors') is None:
                 # If not custom preprocessors, use default META_PREPROCESSORS
                 del params['preprocessors']

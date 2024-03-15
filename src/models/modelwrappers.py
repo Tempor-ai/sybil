@@ -246,6 +246,36 @@ class MetaModelLR(AbstractModel):
         meta_predictions = self.regressor.predict(base_predictions)
         return meta_predictions.ravel()
 
+class MetaModelNaive(AbstractModel):
+    """
+    MetaModel using Naive ensemble. All base models are equally weighted
+    """
+    def _init_(self, base_models, *args, **kwargs):
+        self.base_models = base_models
+        self.models_weights = {}
+        super()._init_(*args, **kwargs)
+
+    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> float:
+        y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+        main_scorer = self.scorers[0]
+        base_scores = {}
+        for model in self.base_models:
+            print(f"\nFitting base model: {model.type}")
+            model._train(y_base)
+            y_pred = model.predict(len(y_meta))
+            base_scores[model.type] = main_scorer(y_meta, y_pred)
+            print(f"{model.type} {main_scorer._name_} test score: {base_scores[model.type]}")
+            model._train(y)
+            model.train_idx = y.index
+        num_models = len(self.base_models)
+        self.models_weights = {model.type: 1/num_models
+                               for model in self.base_models}
+
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
+        base_predictions = {model.type: model.predict(lookforward) for model in self.base_models}
+        meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
+                                for model in self.base_models])
+        return meta_predictions
 
 def has_argument(func, arg_name):
     return arg_name in func.__code__.co_varnames
