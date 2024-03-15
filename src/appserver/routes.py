@@ -29,8 +29,8 @@ class Preprocessor(BaseModel):
 class Model(BaseModel):
     type: str
     scorers: Union[List[str], None] = None
-    params: Union[Parameters, None] = None
-
+    # params: Union[Parameters, None] = None
+    params: dict
 
 class TrainRequest(BaseModel):
     data: List[List[DATASET_VALUE]]
