@@ -12,7 +12,7 @@ from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR,MetaModelNaive
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
