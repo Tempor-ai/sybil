@@ -75,8 +75,6 @@ class rest_client:
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
         
         response = requests.post(url, json=api_json)
-        new = response.json()
-        new.get('forecast')
 
         #check of response is the same length as the input data
         forecast_yhat = response.json().get('forecast')['yhat1']
