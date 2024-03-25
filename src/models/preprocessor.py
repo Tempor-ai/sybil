@@ -103,6 +103,8 @@ class SimpleImputer(AbstractPreprocessor):
             self.fill_value = X.median()
         elif self.strategy == "constant":
             pass
+        else:
+            raise ValueError(f'Unknown strategy: {self.strategy}')
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """Impute missing values in X."""
