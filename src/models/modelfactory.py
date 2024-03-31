@@ -12,7 +12,7 @@ from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
 from .pipeline import Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
@@ -27,7 +27,8 @@ META_BASE_MODELS = [
     {'type': 'darts_linearregression'},
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
-    # {'type': 'stats_autoets'}
+    # {'type': 'stats_autoets'},
+    {'type': 'neuralprophet'}
 ]
 META_PREPROCESSORS = [
     {'type': 'dartsimputer'},
@@ -35,7 +36,15 @@ META_PREPROCESSORS = [
     {'type': 'minmaxscaler'}
 ]
 
-
+DEFAULT_NP_BASE_MODELS = {
+    "params": {
+      "changepoints_range": 0.2,
+      "epochs": 2,
+      "growth": "off"
+    },
+    "metrics": [],
+    "type": "neuralprophet",
+}
 class ModelFactory:
     """
     Factory class for creating models.
@@ -61,7 +70,8 @@ class ModelFactory:
             'darts_naive': ('darts.models', 'NaiveMovingAverage'),
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
             'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
-            'darts_tbats': ('darts.models', 'TBATS')
+            'darts_tbats': ('darts.models', 'TBATS'),
+            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet')
         }
 
         module_name, class_name = models[type]
@@ -71,7 +81,7 @@ class ModelFactory:
     def create_model(dataset: pd.DataFrame,
                      type: str = 'meta_lr',
                      scorers: Union[str, List[str]] = None,
-                     params: dict = None) -> AbstractModel:
+                     params: dict = None, external_params: dict = None) -> AbstractModel:
         """
         Create a model of the given type.
 
@@ -134,6 +144,14 @@ class ModelFactory:
             
             if type == 'darts_rnn':
                 predictor = wrapper_class(model=model_instance, type=type, rnn_model="",rnn_model_ckpt="", scorers=scorer_funcs)
+
+            if type == 'neuralprophet': 
+                if external_params is None:
+                    base_model_config = DEFAULT_NP_BASE_MODELS
+                else:
+                    base_model_config = external_params
+                model_instance = ModelFactory._get_model_class(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
+                predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config)
 
         if params and 'preprocessors' in params:
             preprocessors = [ModelFactory._create_preprocessor(pp_name)
