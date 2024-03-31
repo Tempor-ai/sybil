@@ -72,19 +72,15 @@ class AbstractModel(ABC):
         # df = X.join(y)
         y = data.iloc[:, -1]
         X = data.iloc[:, :-1]
-        # if data.shape[1] > 1:  # Exogenous variables are present
-        #     self.isExogenous = True
-        # else:
-        #     self.isExogenous = False
 
         y_train, y_test, X_train, X_test = train_test_split(y, X, test_size=test_size, shuffle=False)
         print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
-        self._train(y=y_train, X=X_train, isExogenous=self.isExogenous)
+        self._train(y=y_train, X=X_train)
         scores = self.score(y_test, X=X_test)
 
         self.train_idx = data.index
         print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
-        self._train(y=y, X=X, isExogenous=self.isExogenous)  # Refit with full data
+        self._train(y=y, X=X)  # Refit with full data
 
         return {'model': self,
                 'type': self.type,
@@ -99,8 +95,7 @@ class AbstractModel(ABC):
         @param X: Dataframe with exogenous variables of shape (lookforward, n_x).
         @return: A Pandas Series with the predicted values.
         """
-        # X = None if self.isExogenous is False else X
-        y_pred = self._predict(lookforward=lookforward, X=X, isExogenous=self.isExogenous)
+        y_pred = self._predict(lookforward=lookforward, X=X)
         if self.train_idx is not None:
             timestep = self.train_idx[-1] - self.train_idx[-2]
             start = self.train_idx[-1] + timestep
@@ -115,19 +110,18 @@ class AbstractModel(ABC):
             return False
 
     @abstractmethod
-    def _train(self, y: pd.Series, X: pd.DataFrame = None, isExogenous: bool = False) -> None:
+    def _train(self, y: pd.Series, X: pd.DataFrame = None) -> None:
         """
         Internal method to train the model.
 
         @param y: Time series of shape (t,).
-        @param isExogenous: Boolean indicating whether exogenous variables are present.
         @param X: Exogenous variables of shape (t, n).
         @return: None
         """
         pass
 
     @abstractmethod
-    def _predict(self, lookforward: int = 1, X: pd.DataFrame = None, isExogenous: bool = False) -> np.ndarray:
+    def _predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> np.ndarray:
         """
         Internal method to predict the next lookforward steps.
 
@@ -145,14 +139,14 @@ class StatsforecastWrapper(AbstractModel):
         self.model = model
         super().__init__(*args, **kwargs)
 
-    def _train(self, y: pd.Series, X: pd.DataFrame=None, isExogenous: bool = False) -> None:
-        X = None if isExogenous is False else X
+    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
+        X = None if self.isExogenous is False else X
         y_val = y.values
         X_val = None if X is None else X.values
         self.model.fit(y=y_val, X=X_val)
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None, isExogenous: bool = False)-> np.ndarray:
-        X = None if isExogenous is False else X
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        X = None if self.isExogenous is False else X
         X_val = None if X is None else X.values
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
@@ -165,8 +159,8 @@ class DartsWrapper(AbstractModel):
         self.model = model
         super().__init__(*args, **kwargs)
 
-    def _train(self, y: pd.Series, X: pd.DataFrame=None, isExogenous: bool = False) -> None:
-        X = None if isExogenous is False else X
+    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
+        X = None if self.isExogenous is False else X
         y_time_series = TimeSeries.from_series(y)
         if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_time_series = TimeSeries.from_dataframe(X)
@@ -174,8 +168,8 @@ class DartsWrapper(AbstractModel):
         else:
             self.model.fit(y_time_series)
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None, isExogenous: bool = False)-> np.ndarray:
-        X = None if isExogenous is False else X
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        X = None if self.isExogenous is False else X
         if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_ts = TimeSeries.from_dataframe(X)
             y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
@@ -196,7 +190,7 @@ class NeuralProphetWrapper(AbstractModel):
         model = self.neuralProphet_model.fit(data, external_base_model_config)
         self.model = model
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None, isExogenous: bool = False)-> np.ndarray:
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
         y_ts = self.neuralProphet_model.predict(X, self.model)
         return y_ts
 
@@ -210,7 +204,7 @@ class MetaModelWA(AbstractModel):
         self.models_weights = {}
         super().__init__(*args, **kwargs)
 
-    def _train(self, y: pd.Series, X: pd.DataFrame=None, isExogenous: bool = False) -> float:
+    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> float:
         base_predictions = []
         main_scorer = self.scorers[0]
         base_scores = {}
@@ -233,19 +227,19 @@ class MetaModelWA(AbstractModel):
             else:
                 y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
                 # TODO - Need to add X to the train method
-                model._train(y_base, isExogenous=isExogenous)
+                model._train(y_base)
                 y_pred = model.predict(len(y_meta))
                 base_scores[model.type] = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
                 base_predictions.append(y_pred)
-                model._train(y, isExogenous=isExogenous)
+                model._train(y)
                 model.train_idx = y.index
             
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
                                for model in self.base_models}
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None, isExogenous: bool = False) -> np.ndarray:
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = {}#convert 264 to block and add x variable initiation like train method
         for model in self.base_models:
             if model.isExternalModel():
@@ -301,7 +295,7 @@ class MetaModelLR(AbstractModel):
         self.regressor = LinearRegression()
         super().__init__(*args, **kwargs)
 
-    def _train(self, y: pd.Series, X: pd.DataFrame=None, isExogenous: bool = False) -> None:
+    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         base_predictions = []
         main_scorer = self.scorers[0]
 
@@ -321,12 +315,12 @@ class MetaModelLR(AbstractModel):
                 model._train(df_combined, model.base_model_config)  # Refit with full data
                 
             else:
-                model._train(y_base, X=X_base, isExogenous=isExogenous)
+                model._train(y_base, X=X_base)
                 y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
                 base_predictions.append(y_pred)
                 test_score = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
-                model._train(y, X=X, isExogenous=isExogenous)  # Refit with full data
+                model._train(y, X=X)  # Refit with full data
             
 
 
@@ -337,7 +331,7 @@ class MetaModelLR(AbstractModel):
         # y_meta_filtered = y_meta[y_meta.index.isin(base_predictions_df.index)]
         self.regressor.fit(base_predictions, y_meta)
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None, isExogenous: bool = False) -> np.ndarray:
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = [model.predict(lookforward, X) for model in self.base_models]
         base_predictions = np.column_stack(base_predictions)
         meta_predictions = self.regressor.predict(base_predictions)
