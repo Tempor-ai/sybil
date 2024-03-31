@@ -187,11 +187,11 @@ class NeuralProphetWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, data: pd.DataFrame, external_base_model_config) -> None:
-        model = self.neuralProphet_model.fit(data, external_base_model_config)
+        model = self.neuralProphet_model.fit(dataset=data, base_model_request=external_base_model_config)
         self.model = model
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
-        y_ts = self.neuralProphet_model.predict(X, self.model)
+        y_ts = self.neuralProphet_model.predict(data=X, model=self.model)
         return y_ts
 
 # TODO implement the external model train and forcast
@@ -253,7 +253,7 @@ class MetaModelWA(AbstractModel):
                                 for model in self.base_models])
         return meta_predictions
 
-
+# TODO implement the external model train and forcast for onboard neuralprophet
 class MetaModelNaive(AbstractModel):
     """
     MetaModel using Naive ensemble. All base models are equally weighted

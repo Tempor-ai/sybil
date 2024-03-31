@@ -1,5 +1,5 @@
 class OnboardNeuralProphet:
-    def fit(self, dataset, base_model_request):
+    def fit(dataset, base_model_request):
         import requests
         from models.external.rest_client import rest_client
         # Add your training logic here
@@ -9,7 +9,7 @@ class OnboardNeuralProphet:
         model = rest_client.train(dataset, base_model_request)
         return model
 
-    def predict(self, data, model):
+    def predict(data, model):
         import requests
         import pandas as pd
         import numpy as np

@@ -75,7 +75,9 @@ class ModelFactory:
         }
 
         module_name, class_name = models[type]
-        return getattr(__import__(module_name, fromlist=[class_name]), class_name)
+        modelClass = getattr(__import__(module_name, fromlist=[class_name]), class_name)
+        
+        return modelClass
 
     @staticmethod
     def create_model(dataset: pd.DataFrame,
