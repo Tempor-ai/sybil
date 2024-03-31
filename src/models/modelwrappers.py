@@ -194,7 +194,6 @@ class NeuralProphetWrapper(AbstractModel):
         y_ts = self.neuralProphet_model.predict(data=X, model=self.model)
         return y_ts
 
-# TODO implement the external model train and forcast
 class MetaModelWA(AbstractModel):
     """
     MetaModel using the weighted average.
