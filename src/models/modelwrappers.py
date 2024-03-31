@@ -180,8 +180,7 @@ class DartsWrapper(AbstractModel):
             X_ts = TimeSeries.from_dataframe(X)
             y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
         else:
-            y_ts = self.darts_model.predict(n=lookforward)
-            value = y_ts.values().ravel()
+            y_ts = self.model.predict(n=lookforward)
         return y_ts.values().ravel()
 
 class NeuralProphetWrapper(AbstractModel):

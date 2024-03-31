@@ -13,7 +13,7 @@ from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
 from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
-from .pipeline import Pipeline
+from .pipeline import ExternalPipeline, Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
 META_BASE_MODELS = [
@@ -156,7 +156,10 @@ class ModelFactory:
         if params and 'preprocessors' in params:
             preprocessors = [ModelFactory._create_preprocessor(pp_name)
                              for pp_name in params['preprocessors']]
-            return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
+            if predictor.isExternalModel():
+                return ExternalPipeline(processors=preprocessors, model=predictor)
+            else:
+                return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
         return predictor
 
     @staticmethod
