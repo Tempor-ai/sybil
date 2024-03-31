@@ -22,10 +22,11 @@ class AbstractModel(ABC):
     @param type: The type of the model, also used to build a new model from the Factory.
     @param scorers: A list of scorers to use for evaluating metrics.
     """
-    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], rnn_model:str = None, rnn_model_ckpt:str = None,):
+    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], rnn_model:str = None, rnn_model_ckpt:str = None, isExogenous:bool = False):
         self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
         self.train_idx = None
+        self.isExogenous = isExogenous
         self.rnn_model = rnn_model
         self.rnn_model_ckpt =rnn_model_ckpt
 
@@ -68,19 +69,11 @@ class AbstractModel(ABC):
         @param test_size: The ratio of data to use for testing.
         @return: A dictionary containing the trained model and any other information.
         """
+        # df = X.join(y)
         y = data.iloc[:, -1]
-        if data.shape[1] > 1:  # Exogenous variables are present
-            X = data.iloc[:, :-1]
-            y_train, y_test, X_train, X_test = train_test_split(y, X,
-                                                                test_size=test_size,
-                                                                shuffle=False)
-        else:
-            X = None
-            y_train, y_test = train_test_split(y,
-                                               test_size=test_size,
-                                               shuffle=False)
-            X_train, X_test = None, None
+        X = data.iloc[:, :-1]
 
+        y_train, y_test, X_train, X_test = train_test_split(y, X, test_size=test_size, shuffle=False)
         print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
         self._train(y=y_train, X=X_train)
         scores = self.score(y_test, X=X_test)
@@ -109,6 +102,12 @@ class AbstractModel(ABC):
             index = [start+i*timestep for i in range(0, lookforward)]
             y_pred = pd.Series(y_pred, index=index)
         return y_pred
+    
+    def isExternalModel(self):
+        if self.type == 'neuralprophet':
+            return True
+        else:
+            return False
 
     @abstractmethod
     def _train(self, y: pd.Series, X: pd.DataFrame = None) -> None:
@@ -132,7 +131,6 @@ class AbstractModel(ABC):
         """
         pass
 
-
 class StatsforecastWrapper(AbstractModel):
     """
     Wrapper for statsforecast models according to the AbstractModel interface.
@@ -142,11 +140,13 @@ class StatsforecastWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
+        X = None if self.isExogenous is False else X
         y_val = y.values
         X_val = None if X is None else X.values
         self.model.fit(y=y_val, X=X_val)
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        X = None if self.isExogenous is False else X
         X_val = None if X is None else X.values
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
@@ -160,6 +160,7 @@ class DartsWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
+        X = None if self.isExogenous is False else X
         y_time_series = TimeSeries.from_series(y)
         if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_time_series = TimeSeries.from_dataframe(X)
@@ -167,7 +168,8 @@ class DartsWrapper(AbstractModel):
         else:
             self.model.fit(y_time_series)
 
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        X = None if self.isExogenous is False else X
         if X is not None and has_argument(self.model.fit, 'future_covariates'):
             X_ts = TimeSeries.from_dataframe(X)
             y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
@@ -175,6 +177,22 @@ class DartsWrapper(AbstractModel):
             y_ts = self.model.predict(n=lookforward)
         return y_ts.values().ravel()
 
+class NeuralProphetWrapper(AbstractModel):
+    """
+    Wrapper for neuralProphet models according to the AbstractExternalModel interface.
+    """
+    def __init__(self, neuralProphet_model, base_model_config, *args, **kwargs):
+        self.neuralProphet_model = neuralProphet_model
+        self.base_model_config = base_model_config
+        super().__init__(*args, **kwargs)
+
+    def _train(self, data: pd.DataFrame, external_base_model_config) -> None:
+        model = self.neuralProphet_model.fit(dataset=data, base_model_request=external_base_model_config)
+        self.model = model
+
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        y_ts = self.neuralProphet_model.predict(data=X, model=self.model)
+        return y_ts
 
 class MetaModelWA(AbstractModel):
     """
@@ -186,28 +204,55 @@ class MetaModelWA(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> float:
-        y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+        base_predictions = []
         main_scorer = self.scorers[0]
         base_scores = {}
+
         for model in self.base_models:
+            y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
+            df_base = X_base.join(y_base)
+            df_meta = X_meta.join(y_meta)
+            df_combined = X.join(y)
             print(f"\nFitting base model: {model.type}")
-            model._train(y_base)
-            y_pred = model.predict(len(y_meta))
-            base_scores[model.type] = main_scorer(y_meta, y_pred)
-            print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
-            model._train(y)
-            model.train_idx = y.index
+
+            if model.isExternalModel():
+                model._train(df_base, model.base_model_config)
+                y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
+                base_scores[model.type] = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
+                base_predictions.append(y_pred)
+                model._train(df_combined, model.base_model_config)  # Refit with full data
+                model.train_idx = y.index
+            else:
+                y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+                # TODO - Need to add X to the train method
+                model._train(y_base)
+                y_pred = model.predict(len(y_meta))
+                base_scores[model.type] = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
+                base_predictions.append(y_pred)
+                model._train(y)
+                model.train_idx = y.index
+            
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
                                for model in self.base_models}
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
-        base_predictions = {model.type: model.predict(lookforward) for model in self.base_models}
+        base_predictions = {}#convert 264 to block and add x variable initiation like train method
+        for model in self.base_models:
+            if model.isExternalModel():
+                base_predictions[model.type] = model.predict(lookforward, X)
+            else:
+                base_predictions[model.type] = model.predict(lookforward)
+             
+
+        #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
                                 for model in self.base_models])
         return meta_predictions
 
-
+# TODO implement the external model train and forcast for onboard neuralprophet
 class MetaModelNaive(AbstractModel):
     """
     MetaModel using Naive ensemble. All base models are equally weighted
@@ -250,25 +295,39 @@ class MetaModelLR(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
-        if X is None:
-            y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
-            X_base, X_meta = None, None
-        else:
-            y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
         base_predictions = []
         main_scorer = self.scorers[0]
 
         for model in self.base_models:
+            y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
+            df_base = X_base.join(y_base)
+            df_meta = X_meta.join(y_meta)
+            df_combined = X.join(y)
+
             print(f"\nFitting base model: {model.type}")
-            model._train(y_base, X=X_base)
-            y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
-            base_predictions.append(y_pred)
-            test_score = main_scorer(y_meta, y_pred)
-            print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
-            model._train(y, X=X)  # Refit with full data
+            if model.isExternalModel():
+                model._train(df_base, model.base_model_config)
+                y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
+                base_predictions.append(y_pred)
+                test_score = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
+                model._train(df_combined, model.base_model_config)  # Refit with full data
+                
+            else:
+                model._train(y_base, X=X_base)
+                y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
+                base_predictions.append(y_pred)
+                test_score = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
+                model._train(y, X=X)  # Refit with full data
+            
+
 
         # Use linear regression to learn the weights
         base_predictions = np.column_stack(base_predictions)
+        # base_predictions_df=pd.DataFrame(data=base_predictions, index=y_meta.index).dropna()
+        # base_predictions_filtered = base_predictions_df.values
+        # y_meta_filtered = y_meta[y_meta.index.isin(base_predictions_df.index)]
         self.regressor.fit(base_predictions, y_meta)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
