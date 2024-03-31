@@ -22,11 +22,11 @@ class AbstractModel(ABC):
     @param type: The type of the model, also used to build a new model from the Factory.
     @param scorers: A list of scorers to use for evaluating metrics.
     """
-    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], rnn_model:str = None, rnn_model_ckpt:str = None,):
+    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], rnn_model:str = None, rnn_model_ckpt:str = None, isExogenous:bool = False):
         self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
         self.train_idx = None
-        self.isExogenous = False
+        self.isExogenous = isExogenous
         self.rnn_model = rnn_model
         self.rnn_model_ckpt =rnn_model_ckpt
 
@@ -72,10 +72,10 @@ class AbstractModel(ABC):
         # df = X.join(y)
         y = data.iloc[:, -1]
         X = data.iloc[:, :-1]
-        if data.shape[1] > 1:  # Exogenous variables are present
-            self.isExogenous = True
-        else:
-            self.isExogenous = False
+        # if data.shape[1] > 1:  # Exogenous variables are present
+        #     self.isExogenous = True
+        # else:
+        #     self.isExogenous = False
 
         y_train, y_test, X_train, X_test = train_test_split(y, X, test_size=test_size, shuffle=False)
         print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
@@ -233,12 +233,12 @@ class MetaModelWA(AbstractModel):
             else:
                 y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
                 # TODO - Need to add X to the train method
-                model._train(y_base)
+                model._train(y_base, isExogenous=isExogenous)
                 y_pred = model.predict(len(y_meta))
                 base_scores[model.type] = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
                 base_predictions.append(y_pred)
-                model._train(y)
+                model._train(y, isExogenous=isExogenous)
                 model.train_idx = y.index
             
         total_score = sum(base_scores.values())
@@ -316,14 +316,17 @@ class MetaModelLR(AbstractModel):
                 model._train(df_base, model.base_model_config)
                 y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
                 base_predictions.append(y_pred)
+                test_score = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
                 model._train(df_combined, model.base_model_config)  # Refit with full data
+                
             else:
-                model._train(y_base, X=X_base)
+                model._train(y_base, X=X_base, isExogenous=isExogenous)
                 y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
                 base_predictions.append(y_pred)
                 test_score = main_scorer(y_meta, y_pred)
-            print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
-            model._train(y, X=X)  # Refit with full data
+                print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
+                model._train(y, X=X, isExogenous=isExogenous)  # Refit with full data
             
 
 

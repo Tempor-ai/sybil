@@ -96,6 +96,11 @@ class ModelFactory:
         if scorers is None: scorers = ['smape', 'mape']
         if params is None: params = {}
 
+        if dataset.shape[1] > 1:  # Exogenous variables are present
+            isExogenous = True
+        else:
+            isExogenous = False
+
         scorer_funcs = [SCORERS_DICT[s] for s in scorers]
         season_length = max(get_seasonal_period(dataset.iloc[:, -1]), 1)
 
@@ -107,14 +112,14 @@ class ModelFactory:
             ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
             if params.get('preprocessors') is None:
                 # If not custom preprocessors, use default META_PREPROCESSORS
-                predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
+                predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
                 params.setdefault('preprocessors', META_PREPROCESSORS)
             else:
                 # QUICK FIX: Remove custom preprocessors for ModelClass, then add back
                 # TO-DO: move preprocessors outside of create_model() and params 
                 preprocessors = params['preprocessors'].copy()
                 del params['preprocessors']
-                predictor = ModelClass(type=type, scorers=scorer_funcs, **params)
+                predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
                 params.setdefault('preprocessors', preprocessors)
         else:
             # Base model case
@@ -140,10 +145,10 @@ class ModelFactory:
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
             model_instance = model_class(**params)
-            predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs)
+            predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, isExogenous=isExogenous)
             
             if type == 'darts_rnn':
-                predictor = wrapper_class(model=model_instance, type=type, rnn_model="",rnn_model_ckpt="", scorers=scorer_funcs)
+                predictor = wrapper_class(model=model_instance, type=type, rnn_model="",rnn_model_ckpt="", scorers=scorer_funcs, isExogenous=isExogenous)
 
             if type == 'neuralprophet': 
                 if external_params is None:
@@ -151,7 +156,7 @@ class ModelFactory:
                 else:
                     base_model_config = external_params
                 model_instance = ModelFactory._get_model_class(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
-                predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config)
+                predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config, isExogenous=isExogenous)
 
         if params and 'preprocessors' in params:
             preprocessors = [ModelFactory._create_preprocessor(pp_name)
