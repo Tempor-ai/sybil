@@ -17,18 +17,18 @@ from .pipeline import ExternalPipeline, Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape}
 META_BASE_MODELS = [
-    {'type': 'darts_rnn'},
-    {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
+    # {'type': 'darts_rnn'},
+    # {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
     {'type': 'darts_naive'},
     {'type': 'darts_seasonalnaive'},
-    {'type': 'darts_linearregression'},
+    # {'type': 'darts_linearregression'},
     # {'type': 'stats_autotheta'},
     # {'type': 'stats_autoarima'},
     # {'type': 'stats_autoets'},
-    {'type': 'neuralprophet'}
+    # {'type': 'neuralprophet'}
 ]
 META_PREPROCESSORS = [
     {'type': 'dartsimputer'},
