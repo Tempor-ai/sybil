@@ -1,28 +1,51 @@
-type: meta_naive
-# - meta_wa
-# - meta_lr
+# Default model request
+# type: meta_lr
+# scorers:
+#   - smape
+#   - mape
+# params:
+#   preprocessors:
+#     - type: dartsimputer
+#     - type: minmaxscaler
+#   base_models:
+#     - type: darts_naive
+#     - type: darts_seasonalnaive
+#     - type: darts_autotheta
+#     - type: darts_autoarima  
+#     - type: darts_autoets
+
+# Customized model request
+type: meta_lr  # 'meta_naive', 'meta_wa'
 scorers:
   - smape
   - mape
 params:
   preprocessors:
     - type: dartsimputer
-      params:
-        strategy: mean
-    # - type: simpleimputer
-    #   params:
-    #     strategy: mean
     - type: minmaxscaler
   base_models:
     - type: darts_naive
     - type: darts_seasonalnaive
     - type: darts_autotheta
-    # - type: stats_autotheta
     - type: darts_autoets
-    # - type: stats_autoets
     - type: darts_autoarima
-    # - type: stats_autoarima
     - type: darts_tbats
     - type: darts_linearregression
-    # - type: darts_lightgbm
-    # - type: darts_rnn
+    - type: darts_lightgbm
+      params:
+        lags: 12
+        output_chunk_length: 6
+        verbose: -1
+    - type: darts_rnn
+      params:
+        model: LSTM
+        hidden_dim: 10
+        n_rnn_layers: 3
+    - type: neuralprophet
+      external_params:
+        params:
+          changepoints_range: 0.2
+          epochs: 2
+          growth: "off"
+        metrics: []
+        type: neuralprophet
