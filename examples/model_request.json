@@ -3,7 +3,7 @@
     "scorers": ["smape", "mape"],
     "params": {
         "preprocessors": [
-            {"type": "dartsimputer"},
+            {"type": "dartsimputer", "params": {"strategy": "mean"}},
             {"type": "minmaxscaler"}
         ],
         "base_models": [
@@ -11,11 +11,7 @@
             {"type": "darts_seasonalnaive"},
             {"type": "darts_autotheta"},
             {"type": "darts_autoets"},
-            {"type": "darts_autoarima"},
-            {"type": "darts_tbats"},
-            {"type": "darts_rnn", "params": {"model": "LSTM", "hidden_dim": 10, "n_rnn_layers": 3}},
-            {"type": "darts_lightgbm", "params": {"lags": 12, "output_chunk_length": 6, "verbose": -1}},
-            {"type": "darts_linearregression"}
+            {"type": "darts_autoarima"}
         ]
     }
 }
