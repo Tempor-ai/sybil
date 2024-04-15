@@ -252,7 +252,6 @@ class MetaModelWA(AbstractModel):
                                 for model in self.base_models])
         return meta_predictions
 
-# TODO implement the external model train and forcast for onboard neuralprophet
 class MetaModelNaive(AbstractModel):
     """
     MetaModel using Naive ensemble. All base models are equally weighted
@@ -263,23 +262,50 @@ class MetaModelNaive(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> float:
-        y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+        base_predictions = []
         main_scorer = self.scorers[0]
         base_scores = {}
+
         for model in self.base_models:
+            y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
+            df_base = X_base.join(y_base)
+            df_meta = X_meta.join(y_meta)
+            df_combined = X.join(y)
             print(f"\nFitting base model: {model.type}")
-            model._train(y_base)
-            y_pred = model.predict(len(y_meta))
-            base_scores[model.type] = main_scorer(y_meta, y_pred)
-            print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
-            model._train(y)
-            model.train_idx = y.index
+
+            if model.isExternalModel():
+                model._train(df_base, model.base_model_config)
+                y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
+                base_scores[model.type] = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
+                base_predictions.append(y_pred)
+                model._train(df_combined, model.base_model_config)  # Refit with full data
+                model.train_idx = y.index
+            else:
+                y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
+                # TODO - Need to add X to the train method
+                model._train(y_base)
+                y_pred = model.predict(len(y_meta))
+                base_scores[model.type] = main_scorer(y_meta, y_pred)
+                print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
+                base_predictions.append(y_pred)
+                model._train(y)
+                model.train_idx = y.index
+            
         num_models = len(self.base_models)
         self.models_weights = {model.type: 1/num_models
                                for model in self.base_models}
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
-        base_predictions = {model.type: model.predict(lookforward) for model in self.base_models}
+        base_predictions = {}#convert 264 to block and add x variable initiation like train method
+        for model in self.base_models:
+            if model.isExternalModel():
+                base_predictions[model.type] = model.predict(lookforward, X)
+            else:
+                base_predictions[model.type] = model.predict(lookforward)
+             
+
+        #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
                                 for model in self.base_models])
         return meta_predictions
