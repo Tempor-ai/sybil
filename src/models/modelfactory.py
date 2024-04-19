@@ -95,7 +95,7 @@ class ModelFactory:
         @return: A model of the given type.
         """
 
-        if scorers is None: scorers = ['smape', 'mape', 'mase']
+        if scorers is None: scorers = ['smape', 'mase']
         if params is None: params = {}
 
         if dataset.shape[1] > 1:  # Exogenous variables are present
