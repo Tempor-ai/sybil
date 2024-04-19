@@ -10,12 +10,12 @@ import base64
 import pickle
 from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
-from .ts_utils import get_seasonal_period, smape, mape
+from .ts_utils import get_seasonal_period, smape, mape, mase
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
 from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
 from .pipeline import ExternalPipeline, Pipeline
 
-SCORERS_DICT = {'smape': smape, 'mape': mape}
+SCORERS_DICT = {'smape': smape, 'mape': mape, 'mase': mase}
 META_BASE_MODELS = [
     # {'type': 'darts_rnn'},
     # {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
@@ -95,7 +95,7 @@ class ModelFactory:
         @return: A model of the given type.
         """
 
-        if scorers is None: scorers = ['smape', 'mape']
+        if scorers is None: scorers = ['smape', 'mape', 'mase']
         if params is None: params = {}
 
         if dataset.shape[1] > 1:  # Exogenous variables are present

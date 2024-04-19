@@ -60,7 +60,7 @@ def get_seasonal_period(time_series, plot=False):
     return seasonal_period
 
 
-def smape(y_true, y_pred):
+def smape(y_true, y_pred, y_train=None):
     """
     Calculate the SMAPE (Symmetric Mean Absolute Percentage Error) between two arrays.
     :param y_true: numpy array or list, representing the true values
@@ -78,7 +78,7 @@ def smape(y_true, y_pred):
     return smape
 
 
-def mape(y_true, y_pred):
+def mape(y_true, y_pred, y_train=None):
     """
     Calculate the MAPE (Mean Absolute Percentage Error) between two arrays.
     :param y_true: numpy array or list, representing the true values
