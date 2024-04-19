@@ -21,20 +21,16 @@ class Pipeline(AbstractModel):
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> float:
         for transformer in self.transformers:
-            if X is not None:
-                y = transformer.fit_transform(y)
+            if self.model.isExogenous:
                 X = transformer.fit_transform(X)
             else:
-                y = transformer.fit_transform(y)
+                y = transformer.fit_transform(pd.DataFrame(y))
         return self.model._train(y, X)
     
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
         for transformer in self.transformers:
-            if X is not None:
-                y = transformer.transform(y)
+            if self.model.isExogenous:
                 X = transformer.transform(X)
-            else:
-                y = transformer.transform(y)
             
         y = self.model.predict(lookforward, X)
         return y
