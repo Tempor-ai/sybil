@@ -102,7 +102,7 @@ class AbstractModel(ABC):
             index = [start+i*timestep for i in range(0, lookforward)]
             y_pred = pd.Series(y_pred, index=index)
         return y_pred
-    
+
     def isExternalModel(self):
         if self.type == 'neuralprophet':
             return True
@@ -226,14 +226,14 @@ class MetaModelWA(AbstractModel):
             else:
                 y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
                 # TODO - Need to add X to the train method
-                model._train(y_base)
-                y_pred = model.predict(len(y_meta))
+                model._train(y_base,X=X_base)
+                y_pred = model.predict(lookforward=len(y_meta),X=X_meta)
                 base_scores[model.type] = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
                 base_predictions.append(y_pred)
-                model._train(y)
+                model._train(y,X=X)
                 model.train_idx = y.index
-            
+
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
                                for model in self.base_models}
@@ -244,8 +244,8 @@ class MetaModelWA(AbstractModel):
             if model.isExternalModel():
                 base_predictions[model.type] = model.predict(lookforward, X)
             else:
-                base_predictions[model.type] = model.predict(lookforward)
-             
+                base_predictions[model.type] = model.predict(lookforward,X)
+
 
         #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
@@ -283,15 +283,14 @@ class MetaModelNaive(AbstractModel):
                 model.train_idx = y.index
             else:
                 y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
-                # TODO - Need to add X to the train method
-                model._train(y_base)
-                y_pred = model.predict(len(y_meta))
+                model._train(y_base,X=X_base)
+                y_pred = model.predict(len(y_meta),X=X_meta)
                 base_scores[model.type] = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {base_scores[model.type]}")
                 base_predictions.append(y_pred)
-                model._train(y)
+                model._train(y,X=X)
                 model.train_idx = y.index
-            
+
         num_models = len(self.base_models)
         self.models_weights = {model.type: 1/num_models
                                for model in self.base_models}
@@ -302,14 +301,14 @@ class MetaModelNaive(AbstractModel):
             if model.isExternalModel():
                 base_predictions[model.type] = model.predict(lookforward, X)
             else:
-                base_predictions[model.type] = model.predict(lookforward)
-             
+                base_predictions[model.type] = model.predict(lookforward,X)
+
 
         #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
                                 for model in self.base_models])
         return meta_predictions
-    
+
 class MetaModelLR(AbstractModel):
     """
     MetaModel using Linear Regression to combine base models.
@@ -338,7 +337,7 @@ class MetaModelLR(AbstractModel):
                 test_score = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
                 model._train(df_combined, model.base_model_config)  # Refit with full data
-                
+
             else:
                 model._train(y_base, X=X_base)
                 y_pred = model.predict(lookforward=len(y_meta), X=X_meta)
@@ -346,7 +345,7 @@ class MetaModelLR(AbstractModel):
                 test_score = main_scorer(y_meta, y_pred)
                 print(f"{model.type} {main_scorer.__name__} test score: {test_score}")
                 model._train(y, X=X)  # Refit with full data
-            
+
 
 
         # Use linear regression to learn the weights
