@@ -159,22 +159,31 @@ class DartsWrapper(AbstractModel):
         self.model = model
         super().__init__(*args, **kwargs)
 
-    def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
-        X = None if self.isExogenous is False else X
-        y_time_series = TimeSeries.from_series(y)
-        if X is not None and has_argument(self.model.fit, 'future_covariates'):
-            X_time_series = TimeSeries.from_dataframe(X)
-            self.model.fit(y_time_series, future_covariates=X_time_series)
-        else:
+    def _train(self, y: pd.Series, X: pd.DataFrame = None) -> None:
+        if self.isExogenous and self.type == 'darts_autoarima':
+            # print("Performing univariate analysis as model is auto_arima.")
+            y_time_series = TimeSeries.from_series(y)
             self.model.fit(y_time_series)
-
-    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
-        X = None if self.isExogenous is False else X
-        if X is not None and has_argument(self.model.fit, 'future_covariates'):
-            X_ts = TimeSeries.from_dataframe(X)
-            y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
         else:
+            X = None if self.isExogenous is False else X
+            y_time_series = TimeSeries.from_series(y)
+            if X is not None and has_argument(self.model.fit, 'future_covariates'):
+                X_time_series = TimeSeries.from_dataframe(X)
+                self.model.fit(y_time_series, future_covariates=X_time_series)
+            else:
+                self.model.fit(y_time_series)
+
+    def _predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> np.ndarray:
+        if self.isExogenous and self.type == 'darts_autoarima':
+            # print("Performing univariate analysis as model is auto_arima.")
             y_ts = self.model.predict(n=lookforward)
+        else:
+            X = None if self.isExogenous is False else X
+            if X is not None and has_argument(self.model.fit, 'future_covariates'):
+                X_ts = TimeSeries.from_dataframe(X)
+                y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
+            else:
+                y_ts = self.model.predict(n=lookforward)
         return y_ts.values().ravel()
 
 class NeuralProphetWrapper(AbstractModel):
