@@ -3,6 +3,7 @@ import yaml
 import requests
 import pandas as pd
 import numpy as np
+from io import StringIO
 import matplotlib.pyplot as plt
 import seaborn as sns
 from fastapi import APIRouter
@@ -35,18 +36,20 @@ class rest_client:
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
 
-        train_data = []
         dataset.index = dataset.index.strftime('%Y-%m-%d')
         dataset.reset_index(inplace=True)
-        for value in dataset.values:
-            train_data.append(list(value))
+
+        dataset.rename(columns={dataset.columns[0]: 'ds', dataset.columns[-1]: 'y'}, inplace=True)
+        cols =  dataset.columns.tolist()
+        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
+        dataset = dataset[col_rename]
 
         api_json = {
-            'data': train_data,
-            'model': base_model_request  # (optional) can be commented out
+            'data': dataset.to_csv(index=False),
+            'model': base_model_request
         }
-        response = requests.post(url, json=api_json)
 
+        response = requests.post(url, json=api_json)
         return response.json().get('model')
             
     def forecast(dataset, model):
@@ -55,8 +58,15 @@ class rest_client:
         dataset.index = dataset.index.strftime('%Y-%m-%d')
         data = dataset.reset_index()
 
+        data.rename(columns={data.columns[0]: 'ds'}, inplace=True)
+        data["y"] = 1
+        
+        cols =  data.columns.tolist()
+        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
+        data = data[col_rename]
+
         api_json = {
-            'data': data.values.tolist(),
+            'data': data.to_csv(index=False),
             'model': model
         }
 
@@ -75,24 +85,18 @@ class rest_client:
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
         
         response = requests.post(url, json=api_json)
+        forecast_json_out = response.json()
+        
+        request_data = StringIO(forecast_json_out['forecast'])
+        forecast_df = pd.read_csv(request_data, sep=",")
+        forecast_df = forecast_df.rename(columns={'ds': 'time'})
 
         #check of response is the same length as the input data
-        forecast_yhat = response.json().get('forecast')['yhat1']
-        forecast_ds = response.json().get('forecast')['ds']
-        forecast_yhat_np=np.asarray(list(forecast_yhat.values()))
-        forecast_ds_np=np.asarray(list(forecast_ds.values()))
-        forecast_df = pd.DataFrame(data = forecast_yhat_np, index=forecast_ds_np, columns = ['prediction']) 
-        forecast_df_index= pd.to_datetime(forecast_df.index, infer_datetime_format=True).strftime('%Y-%m-%d')
-        forecast_df.set_index(forecast_df_index, inplace=True)
-        forecast_response_json = response.json().get('forecast')
+        dataset.index = pd.to_datetime(dataset.index, infer_datetime_format=True)
+        forecast_df['time']= pd.to_datetime(forecast_df.time, infer_datetime_format=True)
+        forecast_df.set_index('time', inplace=True)
+        merged_df = dataset.join(forecast_df)
         if (forecast_df.shape[0] != dataset.shape[0]):
-            # pad the forecast result if forecast_yhat_df or forecast_ds_df has less rows than the input dataset
-            merged_df = dataset.join(forecast_df)['prediction'].fillna(forecast_yhat_np[0])
-            merged_df.index = merged_df.index.set_names([0])
-            merged_df = merged_df.reset_index(0)
-            merged_df[0] = pd.to_datetime(merged_df[0], infer_datetime_format=True)
-            merged_df[0] = merged_df[0].apply(lambda x:x.isoformat())
-            forecast_response_json['yhat1'] = merged_df['prediction'].to_dict()
-            forecast_response_json['ds'] = merged_df[0].to_dict()
-
-        return forecast_response_json 
+            merged_df = merged_df[['yhat1']].fillna(forecast_df['yhat1'].iloc[0])
+        merged_df.reset_index(inplace=True)
+        return merged_df['yhat1'].to_numpy()
