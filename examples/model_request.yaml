@@ -2,7 +2,7 @@
 # type: meta_lr
 # scorers:
 #   - smape
-#   - mape
+#   - mase
 # params:
 #   preprocessors:
 #     - type: dartsimputer
@@ -11,14 +11,14 @@
 #     - type: darts_naive
 #     - type: darts_seasonalnaive
 #     - type: darts_autotheta
-#     - type: darts_autoarima  
+#     - type: darts_autoarima
 #     - type: darts_autoets
 
 # Customized model request
 type: meta_lr  # 'meta_naive', 'meta_wa'
 scorers:
   - smape
-  - mape
+  - mase
 params:
   preprocessors:
     - type: dartsimputer

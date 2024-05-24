@@ -1,6 +1,6 @@
 {
     "type": "meta_lr",
-    "scorers": ["smape", "mape"],
+    "scorers": ["smape", "mase"],
     "params": {
         "preprocessors": [
             {"type": "dartsimputer"},
