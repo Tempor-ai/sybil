@@ -173,18 +173,18 @@ if uploaded_file is not None:
                         )
 
                         # Additional plot with training data, forecasted data, and actual data
-                        # st.write("Training Data, Forecasted Data, and Actual Data:")
-                        # train_dates = [data[0] for data in train_data]
-                        # train_values = [data[1] for data in train_data]
-                        # plt.figure(figsize=(10, 6))
-                        # plt.plot(train_dates, train_values, label='Training Data', color='blue')
-                        # plt.plot(forecast_dates, forecast_values, label='Forecasted Data', color='green')
-                        # plt.plot(forecast_dates, [data[1] for data in test_data], label='Actual Data', color='red')
-                        # plt.xlabel('Date')
-                        # plt.ylabel('Value')
-                        # plt.title('Training Data, Forecasted Data, and Actual Data')
-                        # plt.legend()
-                        # st.pyplot(plt)
+                        st.write("Training Data, Forecasted Data, and Actual Data:")
+                        train_dates = [data[0] for data in train_data]
+                        train_values = [data[1] for data in train_data]
+                        plt.figure(figsize=(10, 6))
+                        plt.plot(train_dates, train_values, label='Training Data', color='blue')
+                        plt.plot(forecast_dates, forecast_values, label='Forecasted Data', color='green')
+                        plt.plot(forecast_dates, [data[1] for data in test_data], label='Actual Data', color='red')
+                        plt.xlabel('Date')
+                        plt.ylabel('Value')
+                        plt.title('Training Data, Forecasted Data, and Actual Data')
+                        plt.legend()
+                        st.pyplot(plt)
 
                     else:
                         st.error("Forecast response does not contain 'data' key. Please check the server response.")
