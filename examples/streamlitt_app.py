@@ -59,7 +59,7 @@ if server_process is None:
 else:
     st.success("Started a new Uvicorn server.")
 
-st.title("Sybil - Time Series Forecasting")
+st.title("SYBIL General-Purpose Forecaster")
 st.write("""
 Upload your time series data in CSV format, select a forecasting model, 
 specify the prediction period, and get your forecast results.
