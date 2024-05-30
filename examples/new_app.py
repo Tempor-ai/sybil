@@ -1,13 +1,16 @@
 import streamlit as st
+import json
+import yaml
+import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-import requests
-import yaml
-import json
+import seaborn as sns
 import subprocess
 import time
 
-# Function to start Uvicorn server
+sns.set()
+
+
 def start_uvicorn_server():
     try:
         response = requests.get("http://localhost:8000")
@@ -33,41 +36,74 @@ def start_uvicorn_server():
     process.terminate()
     return None
 
-# Function to stop Uvicorn server
+
 def stop_uvicorn_server(process):
     if process and isinstance(process, subprocess.Popen):
         process.terminate()
         st.write("Uvicorn server stopped.")
 
-# Function to prepare dataset for forecasting
-def prepare_dataset_forecast(df, time_col_index, target_col_index, test_period):
-    time_col = df.columns[time_col_index]
-    target_col = df.columns[target_col_index]
-    df[time_col] = df[time_col].astype(str)
-    df[target_col] = df[target_col].astype(float)
-    train_data = df.iloc[:, [time_col_index, target_col_index]].values.tolist()
-    return train_data[:-test_period], train_data[-test_period:]
 
-# Start Uvicorn server
-server_process = start_uvicorn_server()
+# Start Uvicorn server at the beginning
+uvicorn_process = start_uvicorn_server()
 
-# Streamlit UI
+
+# Function to load dataset
+def load_dataset(file_path):
+    dataset = pd.read_csv(file_path)
+    return dataset
+
+
+# Function to split dataset
+def split_dataset(dataset, train_size=0.8):
+    train_points = int(train_size * len(dataset))
+    train_df = dataset.iloc[:train_points]
+    test_df = dataset.iloc[train_points:]
+    return train_df, test_df
+
+
+# Function to prepare data for API
+def prepare_data(df):
+    data = []
+    for value in df.values:
+        data.append(list(value))
+    return data
+
+
+# Function to plot data
+def plot_data(df, time_col, target_col, title, figsize=(16, 8), color='b'):
+    plt.figure(figsize=figsize)
+    df.set_index(time_col)[target_col].plot(color=color)
+    plt.title(title, fontweight='bold', fontsize=20)
+    plt.ylabel(f'Temperature Anomaly ({u"N{DEGREE SIGN}" + "C"})')
+    st.pyplot(plt)
+
+
+# Function to make API request
+def make_api_request(url, data):
+    response = requests.post(url, json=data)
+    return response.json()
+
+
+# Streamlit App
 st.title("Climate Data Forecasting")
 
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-if uploaded_file is not None:
-    dataset = pd.read_csv(uploaded_file)
-    st.write("Dataset Shape:", dataset.shape)
-    st.write("Dataset Columns:", dataset.columns)
-    st.write("Dataset Head:", dataset.head())
-    st.write("Dataset Tail:", dataset.tail())
+# Step 1: Upload Dataset
+uploaded_file = st.file_uploader("Upload your dataset (CSV)", type="csv")
+if uploaded_file:
+    dataset = load_dataset(uploaded_file)
+    st.write("Dataset Loaded Successfully!")
+    st.write(dataset.head())
 
-    time_col_index = st.selectbox("Select Time Column Index", range(len(dataset.columns)), format_func=lambda x: dataset.columns[x])
-    target_col_index = st.selectbox("Select Target Column Index", range(len(dataset.columns)), format_func=lambda x: dataset.columns[x])
-    test_period = st.slider("Select Test Period", 1, len(dataset)-1, 10)
+    # Step 2: Show Training Plot
+    time_col = dataset.columns[0]
+    target_col = dataset.columns[-1]
+    dataset[time_col] = dataset[time_col].astype(str)
 
-    train_data, test_data = prepare_dataset_forecast(dataset, time_col_index, target_col_index, test_period)
+    train_df, test_df = split_dataset(dataset)
+    plot_data(train_df, time_col, target_col, "Training Data Plot")
 
+    # Step 3: Select Model Type
+    st.write("Select Model Option:")
     model_option = st.radio("Select Model Option", ("Default Model", "Upload YAML", "Upload JSON"))
 
     if model_option == "Upload YAML":
@@ -86,126 +122,83 @@ if uploaded_file is not None:
             st.stop()
     else:
         model_request = {
-            'type': 'meta_lr',
+            'type': 'meta_lr',  # 'meta_wa'
             'scorers': ['smape', 'mape'],
             'params': {
                 'preprocessors': [
-                    {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+                    {'type': 'dartsimputer', 'params': {'strategy': 'mean'}},
                     {'type': 'minmaxscaler'},
                 ],
                 'base_models': [
                     {'type': 'darts_naive'},
                     {'type': 'darts_seasonalnaive'},
+                    {'type': 'darts_autotheta'},
+                    {'type': 'darts_autoets'},
+                    {'type': 'darts_autoarima'},
+                    {'type': 'darts_tbats'},
+                    {'type': 'darts_lightgbm',
+                     'params': {
+                         'lags': 12,
+                         'lags_future_covariates': [0, 1, 2],
+                         'output_chunk_length': 6,
+                         'verbose': -1
+                     }
+                     },
+                    {'type': 'darts_rnn',
+                     'params': {
+                         'model': 'LSTM',
+                         'hidden_dim': 10,
+                         'n_rnn_layers': 3
+                     }
+                     },
                 ],
             },
         }
 
-    with st.spinner("Training model..."):
-        api_json = {
-            'data': train_data,
-            'model': model_request
-        }
+    train_data = prepare_data(train_df)
+    api_json = {'data': train_data, 'model': model_request}
 
-        with open('url.yaml', 'r') as file:
-            url_dict = yaml.safe_load(file)
+    with open('url.yaml', 'r') as file:
+        url_dict = yaml.safe_load(file)
 
-        protocol = url_dict['protocol']
-        host = url_dict['host']
-        port = url_dict['port']
-        endpoint = 'train'
+    protocol = url_dict['protocol']
+    host = url_dict['host']
+    port = url_dict['port']
+    endpoint = 'train'
+    url = f'{protocol}://{host}:{port}/{endpoint}'
 
-        url = f'{protocol}://{host}:{port}/{endpoint}'
+    # Step 4: Train Model
+    if st.button("Train Model"):
+        st.write("Training the model...")
+        train_json_out = make_api_request(url, api_json)
+        st.write("Model Trained Successfully!")
 
-        response = requests.post(url, json=api_json)
-        train_json_out = response.json()
+        model = train_json_out['model']
 
-    st.success("Model trained successfully!")
-
-    model = train_json_out['model']
-
-    with st.spinner("Forecasting..."):
-        api_json = {
-            'model': model,
-            'data': test_data
-        }
-
+        # Step 5: Forecast
+        test_data = prepare_data(test_df.drop(columns=target_col))
+        api_json = {'model': model, 'data': test_data}
         endpoint = 'forecast'
         url = f'{protocol}://{host}:{port}/{endpoint}'
 
-        response = requests.post(url, json=api_json)
-        forecast_json_out = response.json()
+        if st.button("Forecast"):
+            st.write("Forecasting...")
+            forecast_json_out = make_api_request(url, api_json)
+            st.write("Forecast Completed!")
 
-    forecast_df = pd.DataFrame(
-        data=forecast_json_out['data'],
-        columns=[dataset.columns[time_col_index], dataset.columns[target_col_index]],
-    )
+            forecast_df = pd.DataFrame(
+                data=forecast_json_out['data'],
+                columns=[time_col, target_col],
+            )
 
-    st.write("Forecast DataFrame Shape:", forecast_df.shape)
-    st.write("Forecast DataFrame Columns:", forecast_df.columns)
-    st.write("Forecast DataFrame Head:", forecast_df.head())
-    st.write("Forecast DataFrame Tail:", forecast_df.tail())
+            train_df['color'] = 'b'
+            forecast_df['color'] = 'r'
+            df = pd.concat([train_df, forecast_df]).reset_index(drop=True)
 
-    # Plot the results
-    figsize = (16, 8)
-    fig, ax = plt.subplots(figsize=figsize)
-    dataset.iloc[:len(train_data)].set_index(dataset.columns[time_col_index])[dataset.columns[target_col_index]].plot(ax=ax, color='blue')
-    forecast_df.set_index(dataset.columns[time_col_index])[dataset.columns[target_col_index]].plot(ax=ax, color='red')
-    st.pyplot(fig)
+            plot_data(df, time_col, target_col, "Training and Forecast Data")
 
-    combined_df = pd.concat([dataset.iloc[:len(train_data)], forecast_df]).reset_index(drop=True)
-    st.write("Combined DataFrame Shape:", combined_df.shape)
-    st.write("Combined DataFrame Head:", combined_df.head())
-    st.write("Combined DataFrame Tail:", combined_df.tail())
+            plot_data(dataset, time_col, target_col, "Full Dataset with Forecast")
 
-    # Provide download option
-    csv = combined_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download Detailed Forecast CSV",
-        data=csv,
-        file_name='detailed_forecast.csv',
-        mime='text/csv',
-    )
-
-    # Option to upload a new CSV for future prediction
-    future_file = st.file_uploader("Upload a new CSV for future prediction", type="csv")
-    if future_file is not None:
-        future_dataset = pd.read_csv(future_file)
-        st.write("Future Dataset Shape:", future_dataset.shape)
-        st.write("Future Dataset Columns:", future_dataset.columns)
-        st.write("Future Dataset Head:", future_dataset.head())
-        st.write("Future Dataset Tail:", future_dataset.tail())
-
-        future_time_col_index = st.selectbox("Select Future Time Column Index", range(len(future_dataset.columns)), format_func=lambda x: future_dataset.columns[x])
-
-        future_test_data = future_dataset.iloc[:, [future_time_col_index]].values.tolist()
-
-        with st.spinner("Forecasting future data..."):
-            api_json = {
-                'model': model,
-                'data': future_test_data
-            }
-
-            endpoint = 'forecast'
-            url = f'{protocol}://{host}:{port}/{endpoint}'
-
-            response = requests.post(url, json=api_json)
-            future_forecast_json_out = response.json()
-
-        future_forecast_df = pd.DataFrame(
-            data=future_forecast_json_out['data'],
-            columns=[future_dataset.columns[future_time_col_index], dataset.columns[target_col_index]],
-        )
-
-        st.write("Future Forecast DataFrame Shape:", future_forecast_df.shape)
-        st.write("Future Forecast DataFrame Columns:", future_forecast_df.columns)
-        st.write("Future Forecast DataFrame Head:", future_forecast_df.head())
-        st.write("Future Forecast DataFrame Tail:", future_forecast_df.tail())
-
-        # Plot the future forecast
-        fig, ax = plt.subplots(figsize=figsize)
-        future_forecast_df.set_index(future_dataset.columns[future_time_col_index])[dataset.columns[target_col_index]].plot(ax=ax, color='green')
-        st.pyplot(fig)
-
-# Stop Uvicorn server when Streamlit app is closed
-if st.button("Stop Uvicorn Server"):
-    stop_uvicorn_server(server_process)
+# Stop Uvicorn server when the app closes
+if uvicorn_process:
+    stop_uvicorn_server(uvicorn_process)

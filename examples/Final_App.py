@@ -102,16 +102,19 @@ if uploaded_file is not None:
             st.stop()
     else:
         model_request = {
-            'type': 'meta_lr',
-            'scorers': ['smape', 'mape'],
-            'params': {
-                'preprocessors': [
-                    {'type': 'dartsimputer'},
-                    {'type': 'minmaxscaler'},
+            "type": "meta_lr",
+            "scorers": ["smape", "mape"],
+            "params": {
+                "preprocessors": [
+
+                    {"type": "minmaxscaler"},
                 ],
-                'base_models': [
-                    {'type': 'darts_naive'},
-                    {'type': 'darts_seasonalnaive'},
+                "base_models": [
+                    {"type": "darts_naive"},
+                    {"type": "darts_seasonalnaive"},
+                    # {"type": "darts_autotheta"},
+                    # {"type": "darts_autoets"},
+                    # {"type": "darts_autoarima"},
                 ],
             },
         }

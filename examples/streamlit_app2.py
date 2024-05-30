@@ -173,18 +173,31 @@ if uploaded_file is not None:
                         )
 
                         # Additional plot with training data, forecasted data, and actual data
-                        st.write("Training Data, Forecasted Data, and Actual Data:")
+
+                        st.write("Train Data, SYBIL Forecast(s), and Test Data:")
                         train_dates = [data[0] for data in train_data]
                         train_values = [data[1] for data in train_data]
                         plt.figure(figsize=(10, 6))
-                        plt.plot(train_dates, train_values, label='Training Data', color='blue')
-                        plt.plot(forecast_dates, forecast_values, label='Forecasted Data', color='green')
-                        plt.plot(forecast_dates, [data[1] for data in test_data], label='Actual Data', color='red')
+
+                        # Plotting Train Data in black
+                        plt.plot(train_dates, train_values, label='Train Data', color='black')
+
+                        # Plotting SYBIL Forecast(s) in blue
+                        plt.plot(forecast_dates, forecast_values, label='SYBIL Forecast(s)', color='blue')
+
+                        # Plotting Test Data in black
+                        plt.plot(forecast_dates, [data[1] for data in test_data], label='Test Data', color='black')
+
+                        # Adding the vertical line
+                        last_train_date = train_dates[-1]
+                        plt.axvline(x=last_train_date, color='black', linestyle='--')
+
                         plt.xlabel('Date')
                         plt.ylabel('Value')
-                        plt.title('Training Data, Forecasted Data, and Actual Data')
+                        plt.title('Train Data, SYBIL Forecast(s), and Test Data')
                         plt.legend()
                         st.pyplot(plt)
+
 
                     else:
                         st.error("Forecast response does not contain 'data' key. Please check the server response.")
