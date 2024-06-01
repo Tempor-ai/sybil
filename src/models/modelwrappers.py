@@ -14,6 +14,8 @@ from typing import Union, List
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
 
+# Defining an Epsilon for handling div/0 edge cases
+epsilon=1e-10
 
 class AbstractModel(ABC):
     """
@@ -242,6 +244,10 @@ class MetaModelWA(AbstractModel):
                 base_predictions.append(y_pred)
                 model._train(y,X=X)
                 model.train_idx = y.index
+
+        # Inverting the scores for calculating weights
+        for model in self.base_models:
+            base_scores[model.type]=1/(base_scores[model.type]+epsilon)
 
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
