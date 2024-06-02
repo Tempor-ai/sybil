@@ -67,18 +67,42 @@ protocol = url_dict['protocol']
 host = url_dict['host']
 port = url_dict['port']
 
+
+# Logo and SYBIL picture
+# st.markdown(
+#     """
+#     <style>
+#         [data-testid="stSidebarNav"] {
+#             background-image: url(http://placekitten.com/200/200);
+#             background-repeat: no-repeat;
+#             padding-top: 120px;
+#             background-position: 20px 20px;
+#         }
+#         [data-testid="stSidebarNav"]::before {
+#             content: "My Company Name";
+#             margin-left: 20px;
+#             margin-top: 20px;
+#             font-size: 30px;
+#             position: relative;
+#             top: 100px;
+#         }
+#     </style>
+#     """,
+#     unsafe_allow_html=True,
+# )
+
 # Streamlit UI
 st.title(":violet[SYBIL General-Purpose Forecaster]")
 
 st.write("### :blue[Overview]")
 st.write("Welcome to **SYBIL** - the *general-purpose* and *domain-agnostic* forecaster! This is the simple UI webapp to demostrate how use the SYBIL service via HTTP API. You can also find SYBIL deployed on the SingularityNET marketplace [here](https://beta.singularitynet.io/servicedetails/org/temporai/service/sybil).")
 st.write("Below is the image of the SYBIL API Service schema. You can find more details about SYBIL's architecture in our comprehensive design report [here](https://bit.ly/sybil-design-report).")
-st.image("api_document.png", caption="Your Image Caption", use_column_width=True)
+st.image("api_document.png", caption="SYBIL API Service schema", use_column_width=True)
 st.write("As mentioned in the design report, SYBIL contains one service with two API functions: **Train** and **Forecast**. Here are their descriptions:")
 st.write("- **Train Function:** user inputs time-series train data (.csv) and optional custom model parameters (.yaml or .json), function outputs fitted model object in serialized format with evaluation metrics.")
 st.write("- **Forecast Function:** users inputs forecasted datetimes and optional actual values (for evaluation purposes) with the fitted model object in serialized format, functions outputs those datetimes with the fitted model's forecasted values.")
 st.write("### :blue[Train Function]")
-st.write("Welcome to the Train Function! Here, you can effortlessly train your model on historical data with just a single click. Let's get your model up and running!")
+st.write("Welcome to the **Train Function**! Here, you can effortlessly train your model on historical data with just a single click. Let's get your model up and running!")
 
 # Initialize session state for model
 if 'model' not in st.session_state:
@@ -229,7 +253,7 @@ if uploaded_file is not None:
 
     # st.write(model_request)
     st.write("### :blue[Forecast Function]")
-    st.write("Welcome to the Forecast Function! Here, you can make forecasts on future data using the trained model. Let's get started!")
+    st.write("Welcome to the **Forecast Function**! Here, you can make forecasts on future data using the trained model. Let's get started!")
     future_file = st.file_uploader("Upload future data CSV", type="csv")
     if future_file is not None:
         future_dataset = pd.read_csv(future_file)
