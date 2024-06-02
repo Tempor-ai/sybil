@@ -119,10 +119,12 @@ async def forecast(forecast_request: ForecastRequest):
         dataset = pd.DataFrame(forecast_request.data)
         dataset[0] = pd.to_datetime(dataset[0])
         dataset.set_index(0, inplace=True)
-        
+
     num_steps = len(forecast_request.data)
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
-    output['index'] = output['index'].apply(lambda x:x.isoformat())
+    output['index'] = output['index'].apply(lambda x: x.isoformat())
+    dataset.reset_index(inplace=True)
+    output['index'] = dataset.iloc[:, 0].astype(str)
     output = output.values.tolist()
 
     return ForecastResponse(data=output)
