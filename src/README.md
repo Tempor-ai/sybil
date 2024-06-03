@@ -10,7 +10,7 @@ git clone git@github.com:Tempor-ai/sybil.git
 
 ```bash
 cd {repo_location}/src
-docker run -p 8000:80 --rm -e MODULE_NAME="app" -e VARIABLE_NAME="app" -e TIMEOUT="1200" -it $(docker build -q .)
+docker run -p 80:80 --rm -e MODULE_NAME="app" -e VARIABLE_NAME="app" -it $(docker build -q .)
 # -p 80:80 expose server on port 80
 ```
 

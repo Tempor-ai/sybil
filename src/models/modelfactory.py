@@ -2,39 +2,30 @@
 Module to create prediction pipelines.
 """
 
-import os
-import uuid
 import pandas as pd
-import blosc
-import base64
-import pickle
-from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
-from .ts_utils import get_seasonal_period, smape, mape, mase
-from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
-from .pipeline import ExternalPipeline, Pipeline
+from .ts_utils import get_seasonal_period, smape, mape
+from .preprocessor import MinMaxScaler, SimpleImputer
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR
+from .pipeline import Pipeline
 
-SCORERS_DICT = {'smape': smape, 'mape': mape, 'mase': mase}
-META_BASE_MODELS = [
-    # {'type': 'darts_rnn'},
-    # {'type': 'darts_lightgbm'},  # TODO: Need to fix use of covariates lags
-    {'type': 'darts_autotheta'},
-    {'type': 'darts_autoarima'},
-    {'type': 'darts_autoets'},
-    {'type': 'darts_naive'},
-    {'type': 'darts_seasonalnaive'},
-    # {'type': 'darts_linearregression'},
-    # {'type': 'stats_autotheta'},
-    # {'type': 'stats_autoarima'},
-    # {'type': 'stats_autoets'},
-    # {'type': 'neuralprophet'}
-]
-META_PREPROCESSORS = [
-    {'type': 'dartsimputer'},
-    # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
-    {'type': 'minmaxscaler'}
-]
+SCORERS_DICT = {'smape': smape, 'mape': mape}
+DEFAULT_CFG = {'type': 'meta_lr',
+               'score': ['smape', 'mape'],
+               'params': {
+                   'preprocessors': [
+                       {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+                       {'type': 'minmaxscaler'}
+                   ],
+                   'base_models': [
+                       {'type': 'darts_autoets'},
+                       {'type': 'darts_autoarima'},
+                       {'type': 'darts_autotheta'},
+                       {'type': 'stats_autotheta'},
+                       {'type': 'stats_autotheta'},
+                       {'type': 'neuralprophet'}]}
+               }
+DEFAULT_BASE_MODELS = [{'type': 'darts_autoets'}, {'type': 'darts_autoarima'}, {'type': 'darts_autotheta'}]
 
 DEFAULT_NP_BASE_MODELS = {
     "params": {
@@ -51,12 +42,13 @@ class ModelFactory:
     """
 
     @staticmethod
-    def _get_model_class(type: str):
+    def _get_model_instance(type: str, season_length: int):
         """
-        Helper method to import and return the class of a model based on its type.
+        Helper method to instantiate a model based on its type and season_length.
 
         :param type: The type of model to instantiate.
-        :return: A class of the specified model.
+        :param season_length: Seasonal period of the dataset.
+        :return: An instance of the specified model.
         """
         models = {
             'stats_autotheta': ('statsforecast.models', 'AutoTheta'),
@@ -65,25 +57,22 @@ class ModelFactory:
             'darts_autotheta': ('darts.models', 'StatsForecastAutoTheta'),
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
             'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
-            'darts_lightgbm': ('darts.models.forecasting.lgbm', 'LightGBMModel'),
-            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
-            'darts_naive': ('darts.models', 'NaiveMovingAverage'),
-            'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
-            'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
-            'darts_tbats': ('darts.models', 'TBATS'),
             'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet')
         }
 
         module_name, class_name = models[type]
-        modelClass = getattr(__import__(module_name, fromlist=[class_name]), class_name)
-        
-        return modelClass
+        ModelClass = getattr(__import__(module_name, fromlist=[class_name]), class_name)
+
+        if type in ('neuralprophet'):
+            return ModelClass()
+        else:
+            return ModelClass(season_length=season_length)
 
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     type: str = 'meta_lr',
-                     scorers: Union[str, List[str]] = None,
-                     params: dict = None, external_params: dict = None) -> AbstractModel:
+                     type: str = DEFAULT_CFG['type'],
+                     scorers: Union[str, List[str]] = DEFAULT_CFG['score'],
+                     params: dict = DEFAULT_CFG['params'], external_params: dict = None) -> AbstractModel:
         """
         Create a model of the given type.
 
@@ -95,93 +84,51 @@ class ModelFactory:
         @return: A model of the given type.
         """
 
-        if scorers is None: scorers = ['smape', 'mase']
-        if params is None: params = {}
+        scorer_funcs = [SCORERS_DICT[s] for s in scorers] if (isinstance(scorers, list) and len(scorers) > 0) \
+            else DEFAULT_CFG['score']
+        season_length = get_seasonal_period(dataset.iloc[:, -1])
 
-        if dataset.shape[1] > 1:  # Exogenous variables are present
-            isExogenous = True
-        else:
-            isExogenous = False
-
-        scorer_funcs = [SCORERS_DICT[s] for s in scorers]
-        season_length = max(get_seasonal_period(dataset.iloc[:, -1]), 1)
-
-        if type.startswith('meta_'):
-            # Meta model case
-            base_models_kwargs = params.get('base_models', META_BASE_MODELS)
-            params['base_models'] = [ModelFactory.create_model(dataset, **kws)
-                                     for kws in base_models_kwargs]
-            ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
-            if params.get('preprocessors') is None:
-                # If not custom preprocessors, use default META_PREPROCESSORS
-                predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
-                params.setdefault('preprocessors', META_PREPROCESSORS)
+        if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets'):
+            model_instance = ModelFactory._get_model_instance(type, season_length)
+            predictor = StatsforecastWrapper(stats_model=model_instance, type=type, scorers=scorer_funcs)
+        elif type in ('darts_autotheta', 'darts_autoarima', 'darts_autoets'):
+            model_instance = ModelFactory._get_model_instance(type, season_length)
+            predictor = DartsWrapper(darts_model=model_instance, type=type, scorers=scorer_funcs)
+        elif type in ('neuralprophet'): #TODO add default value for the external_params ?
+            season_length = None
+            if external_params is None:
+                base_model_config = DEFAULT_NP_BASE_MODELS
             else:
-                # QUICK FIX: Remove custom preprocessors for ModelClass, then add back
-                # TO-DO: move preprocessors outside of create_model() and params 
-                preprocessors = params['preprocessors'].copy()
-                del params['preprocessors']
-                predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
-                params.setdefault('preprocessors', preprocessors)
+                base_model_config = external_params
+            model_instance = ModelFactory._get_model_instance(type=type, season_length=season_length) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
+            predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config)
+        elif "meta_" in type:
+            base_models_kwargs = DEFAULT_BASE_MODELS if not params else params['base_models']
+            base_models = [ModelFactory.create_model(dataset, **model_kwargs) for model_kwargs in base_models_kwargs]
+            ModelClass = MetaModelWA if type == 'meta_wa' else MetaModelLR
+            predictor = ModelClass(models=base_models, type=type, scorers=scorer_funcs)
         else:
-            # Base model case
-            if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
-                        'darts_autotheta', 'darts_autoarima', 'darts_autoets'):
-                params.setdefault('season_length', season_length)
-            if type == 'darts_lightgbm':
-                if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
-                    params.setdefault('lags_future_covariates', [0])
-                if 'lags' not in params:
-                    params.setdefault('lags', season_length)
-            if type == 'darts_rnn':
-                params.setdefault('input_chunk_length', season_length)
-            if type == 'darts_seasonalnaive':
-                params.setdefault('K', season_length)
-            if type == 'darts_naive':
-                params.setdefault('input_chunk_length', 1)
-            if type == 'darts_linearregression':
-                params.setdefault('lags', season_length)
-            if type == 'darts_tbat':
-                params.setdefault('seasonal_periods', [season_length])
-
-            model_class = ModelFactory._get_model_class(type)
-            wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
-            model_instance = model_class(**params)
-            predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, isExogenous=isExogenous)
-            
-            if type == 'darts_rnn':
-                predictor = wrapper_class(model=model_instance, type=type, rnn_model="",rnn_model_ckpt="", scorers=scorer_funcs, isExogenous=isExogenous)
-
-            if type == 'neuralprophet': 
-                if external_params is None:
-                    base_model_config = DEFAULT_NP_BASE_MODELS
-                else:
-                    base_model_config = external_params
-                model_instance = ModelFactory._get_model_class(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
-                predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config, isExogenous=isExogenous)
+            raise ValueError(f'Unknown model type: {type}')
 
         if params and 'preprocessors' in params:
-            preprocessors = [ModelFactory._create_preprocessor(pp_name)
-                             for pp_name in params['preprocessors']]
-            if predictor.isExternalModel():
-                return ExternalPipeline(processors=preprocessors, model=predictor)
-            else:
-                return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
+            preprocessors = [ModelFactory._create_preprocessor(preprocessor) for preprocessor in params['preprocessors']]
+            return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
         return predictor
 
     @staticmethod
-    def _create_preprocessor(preprocessor: dict):
+    def _create_preprocessor(preprocessor):
         """
         Helper method to instantiate a preprocessor based on its type.
 
         :param preprocessor: Dictionary with type and optional parameters for the preprocessor.
         :return: An instance of the specified preprocessor.
         """
-        preprocessors_map = {'minmaxscaler': MinMaxScaler,
-                             'simpleimputer': SimpleImputer,
-                             'dartsimputer': DartsImputer}
+        preprocessors_map = {
+            'minmaxscaler': MinMaxScaler,
+            'simpleimputer': SimpleImputer
+        }
         type = preprocessor.get('type')
-        kwargs = preprocessor.get('params', {})
+        kwargs = preprocessor.get('param', {})
         if type in preprocessors_map:
             return preprocessors_map.get(type)(**kwargs)
         else:
@@ -201,38 +148,6 @@ class ModelFactory:
         time_col_name = clean_dataset.columns[time_col]
         if clean_dataset[time_col_name].dtype == object:
             clean_dataset[time_col_name] = pd.to_datetime(clean_dataset[time_col_name],
-                                                          infer_datetime_format=True)
+                                                       infer_datetime_format=True)
         clean_dataset = clean_dataset.set_index(time_col_name).astype(float)
         return clean_dataset
-    
-    @staticmethod
-    def save(model) -> str:
-        for item in model.model.base_models:
-            if item.type == 'darts_rnn':
-                uid = str(uuid.uuid4())
-                item.model.save(uid)
-                rnn_model = base64.b64encode(blosc.compress(open(uid, "rb").read()))
-                rnn_model_ckpt = base64.b64encode(blosc.compress(open(uid+".ckpt", "rb").read()))
-                item.rnn_model = rnn_model
-                item.rnn_model_ckpt = rnn_model_ckpt
-                os.remove(uid)
-                os.remove(uid+".ckpt")
-        output_model = base64.b64encode(blosc.compress(pickle.dumps(model)))
-        
-        return output_model
-    
-    @staticmethod
-    def load(modelStr):
-        model = pickle.loads(blosc.decompress(base64.b64decode(modelStr)))
-        for item in model.model.base_models:
-            if item.type == 'darts_rnn':
-                rnn_model = item.rnn_model
-                rnn_model_ckpt = item.rnn_model_ckpt
-                uid = str(uuid.uuid4())
-                open(uid, "wb").write(blosc.decompress(base64.b64decode(rnn_model)))
-                open(uid+".ckpt", "wb").write(blosc.decompress(base64.b64decode(rnn_model_ckpt)))
-                rnnload = RNNModel.load(uid)
-                item.model = rnnload
-                os.remove(uid)
-                os.remove(uid+".ckpt")
-        return model

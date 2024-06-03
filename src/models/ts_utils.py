@@ -3,10 +3,6 @@ import numpy as np
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
-# Defining an Epsilon for handling div/0 edge cases
-epsilon=1e-10
-
-
 
 def get_frequency(time_series):
     # Check if the index of the time series is a DateTimeIndex
@@ -64,7 +60,7 @@ def get_seasonal_period(time_series, plot=False):
     return seasonal_period
 
 
-def smape(y_true, y_pred, y_train=None):
+def smape(y_true, y_pred):
     """
     Calculate the SMAPE (Symmetric Mean Absolute Percentage Error) between two arrays.
     :param y_true: numpy array or list, representing the true values
@@ -75,15 +71,14 @@ def smape(y_true, y_pred, y_train=None):
     y_pred = np.array(y_pred)
 
     numerator = np.abs(y_pred - y_true)
-    #Adding epsilon
-    denominator = ((np.abs(y_true) + np.abs(y_pred)) / 2.0)+epsilon
+    denominator = (np.abs(y_true) + np.abs(y_pred)) / 2.0
 
     smape = np.mean(numerator / denominator) * 100.0
 
     return smape
 
 
-def mape(y_true, y_pred, y_train=None):
+def mape(y_true, y_pred):
     """
     Calculate the MAPE (Mean Absolute Percentage Error) between two arrays.
     :param y_true: numpy array or list, representing the true values
@@ -93,8 +88,7 @@ def mape(y_true, y_pred, y_train=None):
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
-    #Adding Epsilon
-    percentage_errors = np.abs((y_true - y_pred) / (y_true+epsilon))
+    percentage_errors = np.abs((y_true - y_pred) / y_true)
     mape = np.mean(percentage_errors) * 100.0
 
     return mape
@@ -115,7 +109,7 @@ def mase(y_true, y_pred, y_train):
     training_error = np.mean(np.abs(y_train[1:] - y_train[:-1]))
     forecast_error = np.mean(np.abs(y_true - y_pred))
 
-    mase = forecast_error / (training_error+epsilon)
+    mase = forecast_error / training_error
 
     return mase
 
