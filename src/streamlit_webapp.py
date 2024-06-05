@@ -9,6 +9,7 @@ import time
 import plotly.graph_objects as go
 from datetime import timedelta
 
+
 # Function to start Uvicorn server
 def start_uvicorn_server():
     try:
@@ -35,11 +36,13 @@ def start_uvicorn_server():
     process.terminate()
     return None
 
+
 # Function to stop Uvicorn server
 def stop_uvicorn_server(process):
     if process and isinstance(process, subprocess.Popen):
         process.terminate()
         st.write("Uvicorn server stopped.")
+
 
 # Function to split dataset into train and test sets
 def split_dataset(df, time_col, target_col):
@@ -48,16 +51,20 @@ def split_dataset(df, time_col, target_col):
     test_df = df.iloc[train_size:].copy()  # Take the remaining 20% of the data as testing data
     return train_df, test_df
 
+
 # Function to prepare dataset for forecasting
 def prepare_dataset_forecast(df, time_col, target_col):
     df[time_col] = pd.to_datetime(df[time_col])
     df[target_col] = df[target_col].astype(float)
-    data = df[[time_col, target_col]].copy()
+    data = df.copy()
     data[time_col] = data[time_col].astype(str)
+    st.write(df.shape[1])
     return data.values.tolist()
 
+
 # Start Uvicorn server
-server_process = start_uvicorn_server()
+if 'server_process' not in st.session_state:
+    st.session_state.server_process = start_uvicorn_server()
 
 # Load URL configuration
 with open('url.yaml', 'r') as file:
@@ -67,20 +74,26 @@ protocol = url_dict['protocol']
 host = url_dict['host']
 port = url_dict['port']
 
-
 # Streamlit UI
-st.image("raphael_sibyls.jpg", caption="\"Sybils\" fresco painting by Renaissance artist Raphael (Source: Wikipedia)", use_column_width=True)
+st.image("raphael_sibyls.jpg", caption="\"Sybils\" fresco painting by Renaissance artist Raphael (Source: Wikipedia)",
+         use_column_width=True)
 st.title(":violet[SYBIL General-Purpose Forecaster]")
 
 st.write("### :blue[Overview]")
-st.write("Welcome to **SYBIL**, the *general-purpose* and *domain-agnostic* forecaster! This is the simple UI webapp to demostrate how use the SYBIL service via HTTP API. You can also find SYBIL deployed on the SingularityNET (SNET) marketplace [here](https://beta.singularitynet.io/servicedetails/org/temporai/service/sybil).")
-st.write("Below is the image of the SYBIL API Service schema. You can find more details about SYBIL's architecture in our comprehensive design report [here](https://bit.ly/sybil-design-report).")
+st.write(
+    "Welcome to **SYBIL**, the *general-purpose* and *domain-agnostic* forecaster! This is the simple UI webapp to demostrate how use the SYBIL service via HTTP API. You can also find SYBIL deployed on the SingularityNET (SNET) marketplace [here](https://beta.singularitynet.io/servicedetails/org/temporai/service/sybil).")
+st.write(
+    "Below is the image of the SYBIL API Service schema. You can find more details about SYBIL's architecture in our comprehensive design report [here](https://bit.ly/sybil-design-report).")
 st.image("api_document.png", caption="SYBIL API Service schema visualization (Source: Temporai)", use_column_width=True)
-st.write("As mentioned in the design report, SYBIL contains one service with two API functions: **Train** and **Forecast**. Here are their descriptions:")
-st.write("- **Train Function:** user inputs time-series train data (.csv) and optional custom model parameters (.yaml or .json), function outputs fitted model object in serialized format with evaluation metrics.")
-st.write("- **Forecast Function:** users inputs forecasted datetimes and optional actual values (for evaluation purposes) with the fitted model object in serialized format, functions outputs those datetimes with the fitted model's forecasted values.")
+st.write(
+    "As mentioned in the design report, SYBIL contains one service with two API functions: **Train** and **Forecast**. Here are their descriptions:")
+st.write(
+    "- **Train Function:** user inputs time-series train data (.csv) and optional custom model parameters (.yaml or .json), function outputs fitted model object in serialized format with evaluation metrics.")
+st.write(
+    "- **Forecast Function:** users inputs forecasted datetimes and optional actual values (for evaluation purposes) with the fitted model object in serialized format, functions outputs those datetimes with the fitted model's forecasted values.")
 st.write("### :blue[Train Function]")
-st.write("Welcome to the **Train Function**! Here, you can effortlessly train your model on historical data with just a single click. Let's get your model up and running!")
+st.write(
+    "Welcome to the **Train Function**! Here, you can effortlessly train your model on historical data with just a single click. Let's get your model up and running!")
 
 # Initialize session state for model
 if 'model' not in st.session_state:
@@ -97,24 +110,18 @@ if uploaded_file is not None:
     st.session_state.dataset = pd.read_csv(uploaded_file)
     dataset = st.session_state.dataset
     st.write("##### Dataset Preview")
-    st.dataframe(dataset)  # Display entire dataset with option to scroll
+      # Display entire dataset with option to scroll
 
     st.session_state.time_col = dataset.columns[0]  # Default to first column for time
-    target_col = dataset.columns[1]  # Default to second column for target
-
-    # static plot
-    # st.write("### Dataset Line Plot")
-    # fig, ax = plt.subplots()
-    # ax.plot(pd.to_datetime(dataset[st.session_state.time_col]), dataset[target_col], label='Data', marker='o')
-    # ax.set_xlabel("Date")
-    # ax.set_ylabel("Value")
-    # ax.legend()
-    # st.pyplot(fig)
+    target_col = dataset.columns[-1]
 
     st.session_state.time_col = dataset.columns[0]
-    st.session_state.target_col = dataset.columns[1]
+    st.session_state.target_col = dataset.columns[-1]
     time_col = st.session_state.time_col
     target_col = st.session_state.target_col
+    dataset[time_col] = dataset[time_col].astype(str)
+    st.write(dataset.shape[1])
+    st.dataframe(dataset)
 
     # Dynamic plot
     st.write("##### Dynamic Plot")
@@ -176,30 +183,20 @@ if uploaded_file is not None:
         uploaded_json = st.file_uploader("Upload JSON file for model request", type="json")
         if uploaded_json is not None:
             model_request = json.load(uploaded_json)
+            # st.write(model_request)
         else:
             st.warning("Please upload a JSON file.")
             st.stop()
 
+    # Train model button and logic
     if st.button("Train Model"):
-        # if model_request is None:
-        #     model_request = {
-        #         "type": "meta_lr",
-        #         "scorers": ["smape", "mape"],
-        #         "params": {
-        #             "preprocessors": [
-        #                 {"type": "minmaxscaler"},
-        #             ],
-        #             "base_models": [
-        #                 {"type": "darts_naive"},
-        #                 {"type": "darts_seasonalnaive"},
-        #             ],
-        #         },
-        #     }
 
+        
         # Train model with 80-20 split
         train_df, test_df = split_dataset(st.session_state.dataset, st.session_state.time_col, target_col)
         train_data = prepare_dataset_forecast(train_df, st.session_state.time_col, target_col)
-        # st.write(model_request)
+        # st.write(train_df.shape[1])
+        # st.write(train_data)
         with st.spinner("Training model..."):
             api_json = {
                 'data': train_data,
@@ -210,13 +207,9 @@ if uploaded_file is not None:
             url = f'{protocol}://{host}:{port}/{endpoint}'
 
             response = requests.post(url, json=api_json)
-            # st.write(model_request)
             train_json_out = response.json()
         st.session_state.train_json_out = train_json_out
         st.session_state.model = train_json_out['model']
-        # st.success("Model trained successfully!")
-        # st.write("### Model Response")
-        # st.json(train_json_out)
         st.success("Model trained successfully!")
 
         # Display Model Response
@@ -228,120 +221,99 @@ if uploaded_file is not None:
         json_string = json.dumps(st.session_state.train_response, indent=4)
         st.write(f"```json\n{json_string}\n```")
 
+    # Forecast Function section (only visible after the model is trained)
+    if st.session_state.model is not None:
+        st.write("### :blue[Forecast Function]")
+        st.write(
+            "Welcome to the **Forecast Function**! Here, you can make forecasts on future data using the trained model. Let's get started!")
 
-    # st.write(model_request)
-    st.write("### :blue[Forecast Function]")
-    st.write("Welcome to the **Forecast Function**! Here, you can make forecasts on future data using the trained model. Let's get started!")
-    future_file = st.file_uploader("Upload future data CSV", type="csv")
-    if future_file is not None:
-        future_dataset = pd.read_csv(future_file)
-        st.write("## Future Dataset Preview")
-        st.dataframe(future_dataset)
+        future_file = st.file_uploader("Upload future data CSV", type="csv")
 
-        future_time_col = future_dataset.columns[0]
-        future_target_col = future_dataset.columns[1] if len(future_dataset.columns) > 1 else None
-        st.write("#### Training Model Response")
-        json_string = json.dumps(st.session_state.train_response, indent=4)
-        st.write(f"```json\n{json_string}\n```")
-        # Retrain model on the entire dataset before making future forecasts
-        # st.write(model_request)
-        if st.button("Forecast Future Data"):
-            # st.write(model_request)
-            if st.session_state.model is not None:
-                # Retrain model with 100% of the data
-                train_data = prepare_dataset_forecast(st.session_state.dataset, st.session_state.time_col, target_col)
-                # st.write(model_request)
-                with st.spinner("Prediction in progress..."):
-                    api_json = {
-                        'data': train_data,
-                        'model': model_request
-                    }
+        if future_file is not None:
+            future_dataset = pd.read_csv(future_file)
+            st.session_state.future_dataset = future_dataset
+            st.session_state.future_file_name = future_file.name
+        elif 'future_dataset' in st.session_state:
+            future_dataset = st.session_state.future_dataset
+        else:
+            future_dataset = None
 
-                    endpoint = 'train'
-                    url = f'{protocol}://{host}:{port}/{endpoint}'
+        if future_dataset is not None:
+            st.write("## Future Dataset Preview")
+            future_time_col = future_dataset.columns[0]
+            future_dataset[future_time_col] = future_dataset[future_time_col].astype(str)
+            st.dataframe(future_dataset)
 
-                    response = requests.post(url, json=api_json)
-                    train_json_out = response.json()
+            future_time_col = future_dataset.columns[0]
 
+            # future_target_col = future_dataset.columns[-1] if len(future_dataset.columns) > 1 else None
+            future_target_col=target_col
+            # st.write(future_target_col)
+            st.write("#### Training Model Response")
+            json_string = json.dumps(st.session_state.train_response, indent=4)
+            st.write(f"```json\n{json_string}\n```")
 
+            if st.button("Forecast Future Data"):
+                if st.session_state.model is not None:
+                    # Retrain model with 100% of the data
+                    train_data = prepare_dataset_forecast(st.session_state.dataset, st.session_state.time_col,
+                                                          target_col)
+                    with st.spinner("Prediction in progress..."):
+                        api_json = {
+                            'data': train_data,
+                            'model': model_request
+                        }
 
-                # Update model in session state
-                st.session_state.model = train_json_out['model']
+                        endpoint = 'train'
+                        url = f'{protocol}://{host}:{port}/{endpoint}'
 
-                future_test_data = future_dataset[[future_time_col]].copy()
-                future_test_data[future_time_col] = pd.to_datetime(future_test_data[future_time_col]).astype(str)
+                        response = requests.post(url, json=api_json)
+                        train_json_out = response.json()
 
-                future_test_data_list = future_test_data.values.tolist()
+                    # Update model in session state
+                    st.session_state.model = train_json_out['model']
 
-                with st.spinner("Forecasting future data..."):
-                    api_json = {
-                        'model': st.session_state.model,
-                        'data': future_test_data_list
-                    }
+                    future_test_data = future_dataset.copy()
+                    # st.dataframe(future_test_data)
+                    # st.write("debugging")
+                    # st.write(future_test_data.columns)
+                    if future_target_col in future_test_data.columns:
+                        future_test_data.drop(columns=future_target_col, inplace=True)
+                    # st.write(future_test_data.columns)
+                    # future_test_data.drop(columns=target_col,inplace=True)
+                    future_test_data[future_time_col] = pd.to_datetime(future_test_data[future_time_col]).astype(str)
+                    # st.write(future_target_col)
+                    # st.dataframe(future_test_data)
+                    future_test_data_list = future_test_data.values.tolist()
+                    # st.write(future_test_data_list)
+                    with st.spinner("Forecasting future data..."):
+                        api_json = {
+                            'model': st.session_state.model,
+                            'data': future_test_data_list
+                        }
 
-                    endpoint = 'forecast'
-                    url = f'{protocol}://{host}:{port}/{endpoint}'
+                        endpoint = 'forecast'
+                        url = f'{protocol}://{host}:{port}/{endpoint}'
 
-                    response = requests.post(url, json=api_json)
-                    future_forecast_json_out = response.json()
+                        response = requests.post(url, json=api_json)
+                        future_forecast_json_out = response.json()
 
-                future_forecast_df = pd.DataFrame(
-                    data=future_forecast_json_out['data'],
-                    columns=[future_time_col, 'Forecast'],
-                )
-                #
-                # st.write("### Future Forecast Results")
-                # future_forecast_df[future_time_col] = pd.to_datetime(future_forecast_df[future_time_col])
-                # # future_dataset = pd.concat([future_dataset, future_forecast_df['Forecast']], axis=1)
-                # future_forecast_df[future_time_col]= future_dataset[future_time_col]
-                # st.dataframe(future_forecast_df)
-                #
-                # # Create Plotly plot
-                # fig = go.Figure()
-                #
-                # # Add training data trace
-                # fig.add_trace(go.Scatter(
-                #     x=pd.to_datetime(st.session_state.dataset[st.session_state.time_col]),
-                #     y=st.session_state.dataset[target_col],
-                #     mode='lines+markers',
-                #     name='Training Data',line=dict(color='black')
-                # ))
-                #
-                # # Add future forecast trace
-                # st.write("debug dataframe")
-                # st.dataframe(future_forecast_df)
-                # st.write(future_forecast_df[future_time_col])
-                # st.write(future_forecast_df['Forecast'])
-                # fig.add_trace(go.Scatter(
-                #     x=future_forecast_df[future_time_col],
-                #     y=future_forecast_df['Forecast'],
-                #     mode='lines',
-                #     name='Future Forecast',
-                #     line=dict(color='green')
-                # ))
-                #
-                # # Add vertical line for the end of training
-                # end_of_training_date = pd.to_datetime(st.session_state.dataset[st.session_state.time_col].iloc[-1])
-                # fig.add_vline(x=end_of_training_date, line=dict(color='black', dash='dash'), name='End of Training')
-                #
-                # # Update layout
-                # fig.update_layout(
-                #     xaxis_title="Date",
-                #     yaxis_title="Value",
-                #     legend_title="Legend"
-                # )
-                #
-                # st.plotly_chart(fig)
-                #
+                    future_forecast_df = pd.DataFrame(
+                        data=future_forecast_json_out['data'],
+                        columns=[future_time_col, 'sybil_forecast'],
+                    )
+
+                    st.session_state.future_forecast_df = future_forecast_df
+
+            if 'future_forecast_df' in st.session_state:
+                future_forecast_df = st.session_state.future_forecast_df
                 st.write("#### Future Forecast Results")
                 future_forecast_df[future_time_col] = pd.to_datetime(future_forecast_df[future_time_col])
-                # future_dataset = pd.concat([future_dataset, future_forecast_df['Forecast']], axis=1)
-                future_forecast_df[future_time_col]= future_dataset[future_time_col]
+                future_forecast_df[future_time_col] = future_dataset[future_time_col]
                 future_forecast_df[future_time_col] = pd.to_datetime(future_forecast_df[future_time_col])
+                future_forecast_df[future_time_col] = future_forecast_df[future_time_col].astype(str)
                 st.write("#### Future Forecast")
                 st.dataframe(future_forecast_df)
-                # st.write("Debugging DataFrame")
-                # st.dataframe(future_forecast_df)
 
                 # Create Plotly plot
                 fig = go.Figure()
@@ -358,7 +330,7 @@ if uploaded_file is not None:
                 # Add future forecast trace
                 fig.add_trace(go.Scatter(
                     x=future_forecast_df[future_time_col],
-                    y=future_forecast_df['Forecast'],
+                    y=future_forecast_df['sybil_forecast'],
                     mode='lines',
                     name='Future Forecast',
                     line=dict(color='blue')
@@ -380,69 +352,88 @@ if uploaded_file is not None:
 
                 st.plotly_chart(fig)
 
-                # If the future dataset contains actual values, plot them
-                if future_target_col is not None:
-                    st.write("#### Future Forecast with Actual Values")
+                # If the future dataset contains actual values, plot them,also check if the data is multivariate then dont plot
+                # Check if future_target_col is not None, if the column doesn't have all NaN values,
+                # and if the dataset is not multivariate (i.e., it has two or fewer columns).
+                if future_target_col in future_dataset.columns:
+                    if not future_dataset[future_target_col].isna().all():
+                        st.write("#### Future Forecast with Actual Values")
 
                     # Convert future_time_col to datetime
-                    future_dataset[future_time_col] = pd.to_datetime(future_dataset[future_time_col])
-                    future_forecast_df[future_time_col] = pd.to_datetime(future_forecast_df[future_time_col])
+                        future_dataset[future_time_col] = pd.to_datetime(future_dataset[future_time_col])
+                        future_forecast_df[future_time_col] = pd.to_datetime(future_forecast_df[future_time_col])
+                        future_dataset = pd.concat([future_dataset, future_forecast_df['sybil_forecast']], axis=1)
+                        st.write("### Future Dataset with Forecasted and Actual Values")
+                        st.dataframe(future_dataset)
+                        # Create Plotly plot
+                        fig = go.Figure()
 
-                    # Create Plotly plot
-                    fig = go.Figure()
+                        # Add training data trace
+                        fig.add_trace(go.Scatter(
+                            x=pd.to_datetime(st.session_state.dataset[st.session_state.time_col]),
+                            y=st.session_state.dataset[target_col],
+                            mode='lines+markers',
+                            name='Training Data',
+                            line=dict(color='black'),
+                        ))
 
-                    # Add training data trace
-                    fig.add_trace(go.Scatter(
-                        x=pd.to_datetime(st.session_state.dataset[st.session_state.time_col]),
-                        y=st.session_state.dataset[target_col],
-                        mode='lines+markers',
-                        name='Training Data',
-                        line=dict(color='black'),
-                    ))
+                        # Add actual values trace
+                        fig.add_trace(go.Scatter(
+                            x=future_dataset[future_time_col],
+                            y=future_dataset[future_target_col],
+                            mode='lines+markers',
+                            name='Actual Values',
+                            line=dict(color='black')
+                        ))
 
-                    # Add actual values trace
-                    fig.add_trace(go.Scatter(
-                        x=future_dataset[future_time_col],
-                        y=future_dataset[future_target_col],
-                        mode='lines+markers',
-                        name='Actual Values',
-                        line=dict(color='black')
-                    ))
+                        # Add future forecast trace
+                        fig.add_trace(go.Scatter(
+                            x=future_forecast_df[future_time_col],
+                            y=future_forecast_df['sybil_forecast'],
+                            mode='lines',
+                            name='Future Forecast',
+                            line=dict(color='blue')
+                        ))
 
-                    # Add future forecast trace
-                    fig.add_trace(go.Scatter(
-                        x=future_forecast_df[future_time_col],
-                        y=future_forecast_df['Forecast'],
-                        mode='lines',
-                        name='Future Forecast',
-                        line=dict(color='blue')
-                    ))
+                        # Add vertical line for the end of training
+                        end_of_training_date = pd.to_datetime(
+                            st.session_state.dataset[st.session_state.time_col].iloc[-1])
+                        fig.add_vline(x=end_of_training_date, line=dict(color='black', dash='dash'),
+                                      name='End of Training')
 
-                    # Add vertical line for the end of training
-                    end_of_training_date = pd.to_datetime(st.session_state.dataset[st.session_state.time_col].iloc[-1])
-                    fig.add_vline(x=end_of_training_date, line=dict(color='black', dash='dash'), name='End of Training')
+                        # Update layout
+                        fig.update_layout(
+                            xaxis_title="Date",
+                            yaxis_title="Value",
+                            legend_title="Legend"
+                        )
 
-                    # Update layout
-                    fig.update_layout(
-                        xaxis_title="Date",
-                        yaxis_title="Value",
-                        legend_title="Legend"
-                    )
+                        st.plotly_chart(fig)
 
-                    st.plotly_chart(fig)
-                    #concat ds y and actual values
+                # future_dataset = pd.concat([future_dataset, future_forecast_df['sybil_forecast']], axis=1)
+                # st.write("### Future Dataset with Forecasted and Actual Values")
+                # st.dataframe(future_dataset)
+                future_dataset_to_csv = future_forecast_df.copy()
+                # Convert the DataFrame to CSV
+                csv = future_dataset_to_csv.to_csv(index=False).encode('utf-8')
 
+                # Get the name of the uploaded file
+                input_file_name = st.session_state.future_file_name.split('.')[0]
 
-                    future_dataset= pd.concat([future_dataset, future_forecast_df['Forecast']], axis=1)
-                    st.write("### Future Dataset with Forecasted and Actual Values")
-                    st.dataframe(future_dataset)
+                # Define the output file name
+                output_file_name = f"{input_file_name}_forecasted.csv"
 
-            else:
-                st.warning("Please train the model first.")
+                # Download button for the forecasted results
+                st.download_button(
+                    label="Download Forecasted Data",
+                    data=csv,
+                    file_name=output_file_name,
+                    mime='text/csv',
+                )
 
-# Stop Uvicorn server when Streamlit app is closed
+# Stop Uvicorn server manually
 if st.button("Stop Uvicorn Server"):
-    stop_uvicorn_server(server_process)
+    stop_uvicorn_server(st.session_state.server_process)
 
 st.write("&nbsp;&nbsp;&nbsp;&nbsp;")
 st.write(":grey[Powered by]")
