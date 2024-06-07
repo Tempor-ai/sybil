@@ -9,6 +9,8 @@ import time
 import plotly.graph_objects as go
 from datetime import timedelta
 
+TRAINING_COLOR = '#8E8E8E'
+FORECAST_COLOR = '#6FB3E4'
 
 # Function to start Uvicorn server
 def start_uvicorn_server():
@@ -140,7 +142,7 @@ if uploaded_file is not None:
             mode='lines+markers',
             name='Data',
             marker=dict(size=5),
-            line=dict(color='black')
+            line=dict(color=TRAINING_COLOR)
         ))
 
         # Enhancements
@@ -324,7 +326,7 @@ if uploaded_file is not None:
                     y=st.session_state.dataset[target_col],
                     mode='lines+markers',
                     name='Training Data',
-                    line=dict(color='black')
+                    line=dict(color=TRAINING_COLOR)
                 ))
 
                 # Add future forecast trace
@@ -333,7 +335,7 @@ if uploaded_file is not None:
                     y=future_forecast_df['sybil_forecast'],
                     mode='lines',
                     name='Future Forecast',
-                    line=dict(color='blue')
+                    line=dict(color=FORECAST_COLOR)
                 ))
 
                 # Add vertical line for the end of training
@@ -374,7 +376,7 @@ if uploaded_file is not None:
                             y=st.session_state.dataset[target_col],
                             mode='lines+markers',
                             name='Training Data',
-                            line=dict(color='black'),
+                            line=dict(color=TRAINING_COLOR),
                         ))
 
                         # Add actual values trace
@@ -383,7 +385,7 @@ if uploaded_file is not None:
                             y=future_dataset[future_target_col],
                             mode='lines+markers',
                             name='Actual Values',
-                            line=dict(color='black')
+                            line=dict(color=TRAINING_COLOR)
                         ))
 
                         # Add future forecast trace
@@ -392,7 +394,7 @@ if uploaded_file is not None:
                             y=future_forecast_df['sybil_forecast'],
                             mode='lines',
                             name='Future Forecast',
-                            line=dict(color='blue')
+                            line=dict(color=FORECAST_COLOR)
                         ))
 
                         # Add vertical line for the end of training
