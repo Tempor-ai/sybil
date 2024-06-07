@@ -58,7 +58,7 @@ def prepare_dataset_forecast(df, time_col, target_col):
     df[target_col] = df[target_col].astype(float)
     data = df.copy()
     data[time_col] = data[time_col].astype(str)
-    st.write(df.shape[1])
+    # st.write(df.shape[1])
     return data.values.tolist()
 
 
@@ -120,7 +120,7 @@ if uploaded_file is not None:
     time_col = st.session_state.time_col
     target_col = st.session_state.target_col
     dataset[time_col] = dataset[time_col].astype(str)
-    st.write(dataset.shape[1])
+    # st.write(dataset.shape[1])
     st.dataframe(dataset)
 
     # Dynamic plot
