@@ -81,7 +81,7 @@ class ModelFactory:
 
     @staticmethod
     def create_model(dataset: pd.DataFrame,
-                     type: str = 'meta_lr',
+                     type: str = 'meta_wa',
                      scorers: Union[str, List[str]] = None,
                      params: dict = None, external_params: dict = None) -> AbstractModel:
         """
@@ -95,7 +95,7 @@ class ModelFactory:
         @return: A model of the given type.
         """
 
-        if scorers is None: scorers = ['smape', 'mase']
+        if scorers is None: scorers = ['mase', 'smape']
         if params is None: params = {}
 
         if dataset.shape[1] > 1:  # Exogenous variables are present
