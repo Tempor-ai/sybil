@@ -252,7 +252,7 @@ class MetaModelWA(AbstractModel):
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
                                for model in self.base_models}
-        print(self.models_weights)
+        # print(self.models_weights)
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = {}#convert 264 to block and add x variable initiation like train method
         for model in self.base_models:
