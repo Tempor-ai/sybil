@@ -1,9 +1,0 @@
-# Local
-# protocol: http
-# host: localhost
-# port: 8001
-
-# PROD
-protocol: https
-host: neuralprophet.tempor.ai
-port: 443
