@@ -6,4 +6,4 @@ COPY ./requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY ./appserver /app/app
-COPY ./models /app/app/models
+COPY ./models /app/models

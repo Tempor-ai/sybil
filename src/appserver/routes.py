@@ -30,6 +30,7 @@ class Model(BaseModel):
     type: str
     scorers: Union[List[str], None] = None
     # params: Union[Parameters, None] = None
+    external_params: Union[dict, None] = None
     params: dict
 
 class TrainRequest(BaseModel):
@@ -40,7 +41,6 @@ class TrainRequest(BaseModel):
 class Metric(BaseModel):
     type: str
     value: float
-
 
 class TrainResponse(BaseModel):
     model: str
@@ -115,11 +115,18 @@ async def forecast(forecast_request: ForecastRequest):
     # TODO Model currently does not support dates, array is converted into number of steps
     if isinstance(forecast_request.data[0], list):  # Forecast request has exogenous variables
         dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.data))
+        dates = []
+        for items in forecast_request.data:
+            dates.append(items[0])
     else:
-        dataset = None
+        dataset = pd.DataFrame(forecast_request.data)
+        dataset[0] = pd.to_datetime(dataset[0])
+        dataset.set_index(0, inplace=True)
+        dates = forecast_request.data
     num_steps = len(forecast_request.data)
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
-    output['index'] = output['index'].apply(lambda x:x.isoformat())
+    output['index'] = dates
     output = output.values.tolist()
 
     return ForecastResponse(data=output)
+
