@@ -11,6 +11,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from darts import TimeSeries
 from typing import Union, List
+import optuna
+from darts.metrics import mse
 
 METRIC_TYPE = Callable[[np.ndarray, np.ndarray], float]
 
@@ -162,6 +164,14 @@ class DartsWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame = None) -> None:
+
+        param_grid = {
+                'lags': [12, 24, 36],
+                'n_estimators': [50, 100],
+                'learning_rate': [0.01, 0.1],
+                'lags_future_covariates': [[12], [24]]
+            }
+
         if self.isExogenous and self.type == 'darts_autoarima':
             # print("Performing univariate analysis as model is auto_arima.")
             y_time_series = TimeSeries.from_series(y)
@@ -171,8 +181,62 @@ class DartsWrapper(AbstractModel):
             y_time_series = TimeSeries.from_series(y)
             if X is not None and has_argument(self.model.fit, 'future_covariates'):
                 X_time_series = TimeSeries.from_dataframe(X)
+                if self.type == 'darts_lightgbm':
+                    print("Entering Exo")
+                    # print(X.shape)
+                    # print(self.model)
+                    # best_model = self.model.gridsearch(parameters=param_grid,series=y_time_series,forecast_horizon=10,verbose=-1,future_covariates=X_time_series)
+                    
+                    
+                    print(self.model, " Self model")
+                    # current_params = self.model.get_params()
+                    # best_model, best_params,test = self.model.gridsearch(
+                    # parameters=param_grid,
+                    # series=y_time_series,
+                    # # future_covariates=X_time_series,
+                    # forecast_horizon=10
+                    #     )
+                    print("Before HP")
+                    # print(self.model.lags_future_covariates,"Lags future")
+                    # print(self.model.n_estimators,"Estimators")
+                    # print(self.model.learning_rate," LR")
+                    train_size = 0.8
+                    train_points = int(train_size*len(y_time_series))
+                    train_series = y_time_series[:train_points]
+                    val_series = y_time_series[train_points:]
+                    best_model, best_params = self.run_optuna(train_series, future_covariates=X_time_series,val_series=val_series,forecast_horizon=int(0.2*len(y_time_series)), n_trials=10)
+                    print(best_model," Best model")
+                    print(best_params)
+                    # Set the best model
+                    self.model = best_model
+                    # self.model.model_params=best_params
+                    print(" After HP")
+                    # print(self.model.lags_future_covariates,"Lags future")
+                    # print(self.model.n_estimators,"Estimators")
+                    # print(self.model.learning_rate," LR")
+                    # print("Best Parameters:", best_params)
+                                
+                    # self.model=best_model[0]
+                    # updated_params = {**current_params, **best_model[0].get_params()}
+                    # self.model = self.model.__class__(**updated_params)
+                    # self.model.params.setdefault('lags_future_covariates', [0])
+                    print(self.model," Self model after hp")
                 self.model.fit(y_time_series, future_covariates=X_time_series)
+                # self.model.fit(y_time_series)
+                
+                print(best_model)
             else:
+                if self.type == 'darts_lightgbm':
+                    X_time_series=None
+                    print("Entering not Exo")
+                    train_size = 0.8
+                    train_points = int(train_size*len(y_time_series))
+                    train_series = y_time_series[:train_points]
+                    val_series = y_time_series[train_points:]
+                    best_model, best_params = self.run_optuna(train_series, future_covariates=X_time_series,val_series=val_series,forecast_horizon=int(0.2*len(y_time_series)), n_trials=10)
+                    self.model=best_model
+                    print(best_model)
+                    # self.model=best_model
                 self.model.fit(y_time_series)
 
     def _predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> np.ndarray:
@@ -184,9 +248,55 @@ class DartsWrapper(AbstractModel):
             if X is not None and has_argument(self.model.fit, 'future_covariates'):
                 X_ts = TimeSeries.from_dataframe(X)
                 y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
+                # y_ts = self.model.predict(n=lookforward)
+                
+                print(self.model)
+                print("Exo")
             else:
                 y_ts = self.model.predict(n=lookforward)
+                print(self.model)
+                print("Not Exo")
         return y_ts.values().ravel()
+
+
+
+
+    def objective(self, trial, series, past_covariates, future_covariates, val_series, forecast_horizon):
+        # lags = trial.suggest_categorical('lags', [12, 24, 36])
+        n_estimators = trial.suggest_categorical('n_estimators', [50, 100,200])
+        learning_rate = trial.suggest_loguniform('learning_rate', 0.001, 0.1)
+        lags_future_covariates = trial.suggest_categorical('lags_future_covariates', [[12], [24]])
+
+        # self.model.lags = lags
+        # self.model.lags_future_covariates = lags_future_covariates
+        self.model.model.n_estimators = n_estimators
+        self.model.model.learning_rate = learning_rate
+        
+        self.model.fit(series, past_covariates=past_covariates, future_covariates=future_covariates)
+
+        val_prediction = self.model.predict(n=forecast_horizon, future_covariates=future_covariates)
+        # Calculate MSE
+        error = mse(val_series, val_prediction)
+        return error
+
+    def run_optuna(self, series, past_covariates=None, future_covariates=None, val_series=None, forecast_horizon=0, n_trials=100):
+        study = optuna.create_study(direction='minimize')
+        study.optimize(lambda trial: self.objective(trial, series, past_covariates, future_covariates, val_series, forecast_horizon), n_trials=n_trials)
+
+        best_params = study.best_params
+        # self.model.lags = best_params['lags']
+        # self.model.lags_future_covariates = best_params['lags_future_covariates']
+        self.model.model.n_estimators = best_params['n_estimators']
+        self.model.model.learning_rate = best_params['learning_rate']
+
+        print("Best Parameters:", best_params)
+        return self.model, best_params
+
+
+
+
+
+
 
 class NeuralProphetWrapper(AbstractModel):
     """
@@ -248,6 +358,9 @@ class MetaModelWA(AbstractModel):
         # Inverting the scores for calculating weights
         for model in self.base_models:
             base_scores[model.type]=1/(base_scores[model.type]+epsilon)
+            # print(model)
+            # print(model.isExogenous)
+
 
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score

@@ -130,7 +130,9 @@ class ModelFactory:
                 params.setdefault('season_length', season_length)
             if type == 'darts_lightgbm':
                 if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
+                    print("Setting lags")
                     params.setdefault('lags_future_covariates', [0])
+                    print(params)
                 if 'lags' not in params:
                     params.setdefault('lags', season_length)
             if type == 'darts_rnn':
@@ -143,6 +145,9 @@ class ModelFactory:
                 params.setdefault('lags', season_length)
             if type == 'darts_tbat':
                 params.setdefault('seasonal_periods', [season_length])
+            if type in ('darts_autoets','darts_lightgbm'):
+                params.setdefault('add_encoders', {"cyclic": {"future": ["month", "day", "hour"]}}) 
+                print(params)
 
             model_class = ModelFactory._get_model_class(type)
             wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
