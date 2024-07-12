@@ -1,3 +1,6 @@
+"""
+Library of utility class for time series analysis
+"""
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
