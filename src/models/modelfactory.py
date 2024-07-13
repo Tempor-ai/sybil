@@ -82,14 +82,16 @@ class ModelFactory:
         ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
         if params.get('preprocessors') is None:
             # If not custom preprocessors, use default META_PREPROCESSORS
-            params.setdefault('preprocessors', META_PREPROCESSORS)
+            
             predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
+            params.setdefault('preprocessors', META_PREPROCESSORS)
         else:
             # Remove custom preprocessors for ModelClass, then add back
             preprocessors = params['preprocessors'].copy()
             del params['preprocessors']
-            params.setdefault('preprocessors', preprocessors)
+            
             predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
+            params.setdefault('preprocessors', preprocessors)
         return params, predictor
 
     @staticmethod
@@ -133,20 +135,6 @@ class ModelFactory:
             predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config, isExogenous=isExogenous)
 
         return params, predictor
-    
-    @staticmethod
-    def _create_preprocessor_pipeline(params: dict, scorer_funcs: List[str], predictor):
-        """
-        Helper method to instantiate a preprocessor based on its type.
-
-        :param preprocessor: Dictionary with type and optional parameters for the preprocessor.
-        :return: An instance of the specified preprocessor.
-        """
-        preprocessors = [ModelFactory._create_preprocessor(pp_name) for pp_name in params['preprocessors']]
-        if predictor.isExternalModel():
-            return ExternalPipeline(processors=preprocessors, model=predictor)
-        else:
-            return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
 
     @staticmethod
     def _create_preprocessor(preprocessor: dict):
@@ -252,6 +240,11 @@ class ModelFactory:
         
         # Base model case
         if params and 'preprocessors' in params:
-            predictor = ModelFactory._create_preprocessor_pipeline(params, scorer_funcs, predictor)
-
+            # predictor = ModelFactory._create_preprocessor_pipeline(params, scorer_funcs, predictor)
+            preprocessors = [ModelFactory._create_preprocessor(pp_name)
+                             for pp_name in params['preprocessors']]
+            if predictor.isExternalModel():
+                return ExternalPipeline(processors=preprocessors, model=predictor)
+            else:
+                return Pipeline(processors=preprocessors, model=predictor, type=type, scorers=scorer_funcs)
         return predictor
