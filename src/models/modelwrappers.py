@@ -222,7 +222,7 @@ class MetaModelWA(AbstractModel):
         for model in self.base_models:
             y_base, y_meta, X_base, X_meta = train_test_split(y, X, test_size=0.2, shuffle=False)
             df_base = X_base.join(y_base)
-            df_meta = X_meta.join(y_meta)
+            #df_meta = X_meta.join(y_meta) #Not used, so commented out
             df_combined = X.join(y)
             print(f"\nFitting base model: {model.type}")
 
@@ -236,7 +236,6 @@ class MetaModelWA(AbstractModel):
                 model.train_idx = y.index
             else:
                 y_base, y_meta = train_test_split(y, test_size=0.2, shuffle=False)
-                # TODO - Need to add X to the train method
                 model._train(y_base,X=X_base)
                 y_pred = model.predict(lookforward=len(y_meta),X=X_meta)
                 base_scores[model.type] = main_scorer(y_meta, y_pred, y_base)
@@ -252,17 +251,11 @@ class MetaModelWA(AbstractModel):
         total_score = sum(base_scores.values())
         self.models_weights = {model.type: base_scores[model.type] / total_score
                                for model in self.base_models}
-        # print(self.models_weights)
+
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = {}#convert 264 to block and add x variable initiation like train method
         for model in self.base_models:
-            if model.isExternalModel():
-                base_predictions[model.type] = model.predict(lookforward, X)
-            else:
-                base_predictions[model.type] = model.predict(lookforward,X)
-
-
-        #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
+            base_predictions[model.type] = model.predict(lookforward,X)
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
                                 for model in self.base_models])
         return meta_predictions
@@ -313,13 +306,7 @@ class MetaModelNaive(AbstractModel):
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None) -> np.ndarray:
         base_predictions = {}#convert 264 to block and add x variable initiation like train method
         for model in self.base_models:
-            if model.isExternalModel():
-                base_predictions[model.type] = model.predict(lookforward, X)
-            else:
-                base_predictions[model.type] = model.predict(lookforward,X)
-
-
-        #base_predictions = {model.type: model.predict(lookforward) for model in self.base_models} converted to 261-265
+            base_predictions[model.type] = model.predict(lookforward,X)
         meta_predictions = sum([base_predictions[model.type] * self.models_weights[model.type]
                                 for model in self.base_models])
         return meta_predictions

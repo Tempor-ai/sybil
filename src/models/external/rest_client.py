@@ -1,28 +1,15 @@
-import json
+"""
+Library of restful client for external models apis
+"""
+import os
 import yaml
 import requests
 import pandas as pd
-import numpy as np
 from io import StringIO
-import matplotlib.pyplot as plt
-import seaborn as sns
-from fastapi import APIRouter
-from pydantic import BaseModel
-
-import pickle
-import pandas as pd
-from models.modelfactory import ModelFactory
-from typing import Union, List
-import os
-import blosc
-import base64
-import logging
-from fastapi.encoders import jsonable_encoder
 
 class rest_client:
     def train(dataset, base_model_request):
-        # Add your training logic here
-        # from config file
+        # read connection details from config file
         filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         config_file=os.path.join(filePath, 'config.yml') 
 
@@ -36,6 +23,7 @@ class rest_client:
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
 
+        # format the dataset
         dataset.index = dataset.index.strftime('%Y-%m-%d')
         dataset.reset_index(inplace=True)
 
@@ -44,33 +32,18 @@ class rest_client:
         col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
         dataset = dataset[col_rename]
 
+        # create the request json
         api_json = {
             'data': dataset.to_csv(index=False),
             'model': base_model_request
         }
 
+        # send the request
         response = requests.post(url, json=api_json)
         return response.json().get('model')
             
     def forecast(dataset, model):
-        # Add your forecasting logic here
-
-        dataset.index = dataset.index.strftime('%Y-%m-%d')
-        data = dataset.reset_index()
-
-        data.rename(columns={data.columns[0]: 'ds'}, inplace=True)
-        data["y"] = 1
-        
-        cols =  data.columns.tolist()
-        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
-        data = data[col_rename]
-
-        api_json = {
-            'data': data.to_csv(index=False),
-            'model': model
-        }
-
-        # from config file
+        # read connection details from config file
         filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         config_file=os.path.join(filePath, 'config.yml') 
 
@@ -83,8 +56,28 @@ class rest_client:
         endpoint = 'forecast'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
+
+        # format the dataset
+        dataset.index = dataset.index.strftime('%Y-%m-%d')
+        data = dataset.reset_index()
+
+        data.rename(columns={data.columns[0]: 'ds'}, inplace=True)
+        data["y"] = 1
         
+        cols =  data.columns.tolist()
+        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
+        data = data[col_rename]
+
+        # create the request json
+        api_json = {
+            'data': data.to_csv(index=False),
+            'model': model
+        }
+
+        # send the request
         response = requests.post(url, json=api_json)
+
+        #parse the response
         forecast_json_out = response.json()
         
         request_data = StringIO(forecast_json_out['forecast'])
