@@ -111,7 +111,7 @@ class ModelFactory:
             params.setdefault('input_chunk_length', 1)
         if type == 'darts_linearregression':
             params.setdefault('lags', season_length)
-        if type == 'darts_tbat':
+        if type == 'darts_tbats':
             params.setdefault('seasonal_periods', [season_length])
 
         model_class = ModelFactory._get_model_class(type)
