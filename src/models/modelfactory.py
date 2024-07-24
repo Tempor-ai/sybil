@@ -62,7 +62,8 @@ class ModelFactory:
             'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
             'darts_tbats': ('darts.models', 'TBATS'),
             'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet'),
-            'darts_autoces': ('darts.models', 'StatsForecastAutoCES')
+            'darts_autoces': ('darts.models', 'StatsForecastAutoCES'),
+            'darts_kalmanforecaster': ('darts.models', 'KalmanForecaster'),
         }
 
         module_name, class_name = models[type]
@@ -114,6 +115,8 @@ class ModelFactory:
             params.setdefault('lags', season_length)
         if type == 'darts_tbats':
             params.setdefault('seasonal_periods', [season_length])
+        if type == 'darts_kalmanforecaster':
+            params.setdefault('dim_x', season_length)
 
         model_class = ModelFactory._get_model_class(type)
         wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
