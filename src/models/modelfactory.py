@@ -61,7 +61,8 @@ class ModelFactory:
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
             'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
             'darts_tbats': ('darts.models', 'TBATS'),
-            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet')
+            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet'),
+            'darts_autoces': ('darts.models', 'StatsForecastAutoCES')
         }
 
         module_name, class_name = models[type]
@@ -98,7 +99,7 @@ class ModelFactory:
         Helper method to create the predictor for a base model.
         """
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
-                    'darts_autotheta', 'darts_autoarima', 'darts_autoets'):
+                    'darts_autotheta', 'darts_autoarima', 'darts_autoets', 'darts_autoces'):
             params.setdefault('season_length', season_length)
         if type == 'darts_lightgbm':
             if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
