@@ -64,6 +64,8 @@ class ModelFactory:
             'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet'),
             'darts_autoces': ('darts.models', 'StatsForecastAutoCES'),
             'darts_kalmanforecaster': ('darts.models', 'KalmanForecaster'),
+            'darts_catboost': ('darts.models', 'CatBoostModel'),
+            
         }
 
         module_name, class_name = models[type]
@@ -102,7 +104,7 @@ class ModelFactory:
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
                     'darts_autotheta', 'darts_autoarima', 'darts_autoets', 'darts_autoces'):
             params.setdefault('season_length', season_length)
-        if type == 'darts_lightgbm':
+        if type in ('darts_lightgbm','darts_catboost'):
             if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
                 params.setdefault('lags_future_covariates', [0])
             if 'lags' not in params:
