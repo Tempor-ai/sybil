@@ -8,7 +8,6 @@ import pandas as pd
 import blosc
 import base64
 import pickle
-from darts.models.forecasting.rnn_model import RNNModel
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape, mase
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
@@ -58,12 +57,15 @@ class ModelFactory:
             'darts_autoarima': ('darts.models', 'StatsForecastAutoARIMA'),
             'darts_autoets': ('darts.models', 'StatsForecastAutoETS'),
             'darts_lightgbm': ('darts.models.forecasting.lgbm', 'LightGBMModel'),
-            'darts_rnn': ('darts.models.forecasting.rnn_model', 'RNNModel'),
             'darts_naive': ('darts.models', 'NaiveMovingAverage'),
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
             'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
             'darts_tbats': ('darts.models', 'TBATS'),
-            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet')
+            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet'),
+            'darts_autoces': ('darts.models', 'StatsForecastAutoCES'),
+            'darts_kalman': ('darts.models', 'KalmanForecaster'),
+            'darts_catboost': ('darts.models', 'CatBoostModel'),
+            
         }
 
         module_name, class_name = models[type]
@@ -100,32 +102,29 @@ class ModelFactory:
         Helper method to create the predictor for a base model.
         """
         if type in ('stats_autotheta', 'stats_autoarima', 'stats_autoets',
-                    'darts_autotheta', 'darts_autoarima', 'darts_autoets'):
+                    'darts_autotheta', 'darts_autoarima', 'darts_autoets', 'darts_autoces'):
             params.setdefault('season_length', season_length)
-        if type == 'darts_lightgbm':
+        if type in ('darts_lightgbm','darts_catboost'):
             if len(dataset.columns)>1 and 'lags_future_covariates' not in params:
                 params.setdefault('lags_future_covariates', [0])
             if 'lags' not in params:
                 params.setdefault('lags', season_length)
-        if type == 'darts_rnn':
-            params.setdefault('input_chunk_length', season_length)
         if type == 'darts_seasonalnaive':
             params.setdefault('K', season_length)
         if type == 'darts_naive':
             params.setdefault('input_chunk_length', 1)
         if type == 'darts_linearregression':
             params.setdefault('lags', season_length)
-        if type == 'darts_tbat':
+        if type == 'darts_tbats':
             params.setdefault('seasonal_periods', [season_length])
+        if type == 'darts_kalman':
+            params.setdefault('dim_x', season_length)
 
         model_class = ModelFactory._get_model_class(type)
         wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
         model_instance = model_class(**params)
         predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, isExogenous=isExogenous)
         
-        if type == 'darts_rnn':
-            predictor = wrapper_class(model=model_instance, type=type, rnn_model="",rnn_model_ckpt="", scorers=scorer_funcs, isExogenous=isExogenous)
-
         if type == 'neuralprophet': 
             if external_params is None:
                 base_model_config = DEFAULT_NP_BASE_MODELS
@@ -174,16 +173,6 @@ class ModelFactory:
     
     @staticmethod
     def save(model) -> str:
-        for item in model.model.base_models:
-            if item.type == 'darts_rnn':
-                uid = str(uuid.uuid4())
-                item.model.save(uid)
-                rnn_model = base64.b64encode(blosc.compress(open(uid, "rb").read()))
-                rnn_model_ckpt = base64.b64encode(blosc.compress(open(uid+".ckpt", "rb").read()))
-                item.rnn_model = rnn_model
-                item.rnn_model_ckpt = rnn_model_ckpt
-                os.remove(uid)
-                os.remove(uid+".ckpt")
         output_model = base64.b64encode(blosc.compress(pickle.dumps(model)))
         
         return output_model
@@ -191,17 +180,6 @@ class ModelFactory:
     @staticmethod
     def load(modelStr):
         model = pickle.loads(blosc.decompress(base64.b64decode(modelStr)))
-        for item in model.model.base_models:
-            if item.type == 'darts_rnn':
-                rnn_model = item.rnn_model
-                rnn_model_ckpt = item.rnn_model_ckpt
-                uid = str(uuid.uuid4())
-                open(uid, "wb").write(blosc.decompress(base64.b64decode(rnn_model)))
-                open(uid+".ckpt", "wb").write(blosc.decompress(base64.b64decode(rnn_model_ckpt)))
-                rnnload = RNNModel.load(uid)
-                item.model = rnnload
-                os.remove(uid)
-                os.remove(uid+".ckpt")
         return model
     
     @staticmethod

@@ -36,11 +36,6 @@ params:
         lags: 12
         output_chunk_length: 6
         verbose: -1
-    - type: darts_rnn
-      params:
-        model: LSTM
-        hidden_dim: 10
-        n_rnn_layers: 3
     # - type: neuralprophet
     #   external_params:
     #     params:
