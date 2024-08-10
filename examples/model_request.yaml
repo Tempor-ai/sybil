@@ -31,9 +31,9 @@ params:
     - type: darts_autoarima
     # - type: darts_tbats
     # - type: darts_linearregression
-    - type: darts_kalman
-      params:
-        dim_x : 12
+    # - type: darts_kalman
+    #   params:
+    #     dim_x : 12
     - type: darts_autoces
     - type: darts_catboost
       params:
