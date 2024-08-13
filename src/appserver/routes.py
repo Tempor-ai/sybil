@@ -1,30 +1,29 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
 
-import pickle
-import pandas as pd
-from models.modelfactory import ModelFactory
-from typing import Union, List
-import blosc
-import base64
+"""
+Routes class for fast api
+"""
 import logging
+import pandas as pd
+from typing import Union, List
+from pydantic import BaseModel
+from fastapi import APIRouter
 from fastapi.encoders import jsonable_encoder
+
+from models.modelfactory import ModelFactory
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 DATASET_VALUE = Union[str, int, float]
 
-
 class Parameters(BaseModel):
     preprocessors: Union[List['Preprocessor'], None] = None
     base_models: Union[List['Model'], None] = None
 
-
 class Preprocessor(BaseModel):
     type: str
     params: Union[Parameters, None] = None
-
 
 class Model(BaseModel):
     type: str
@@ -33,25 +32,33 @@ class Model(BaseModel):
     external_params: Union[dict, None] = None
     params: dict
 
-class TrainRequest(BaseModel):
-    data: List[List[DATASET_VALUE]]
-    model: Union[Model, None] = None
-
-
 class Metric(BaseModel):
     type: str
     value: float
+
+class TrainRequest(BaseModel):
+    data: List[List[DATASET_VALUE]]
+    model: Union[Model, None] = None
 
 class TrainResponse(BaseModel):
     model: str
     type: str
     metrics: Union[List[Metric], None] = None
 
+class ForecastRequest(BaseModel):
+    model: str
+    data: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
 
+class ForecastResponse(BaseModel):
+    data: List[List[DATASET_VALUE]]
+
+
+#####################
+# Routes section
+#####################
 @router.get('/')
 def index():
     pass
-
 
 @router.post('/train')
 async def train(train_request: TrainRequest):
@@ -94,16 +101,6 @@ async def train(train_request: TrainRequest):
                          metrics=metrics
                          )
 
-
-class ForecastRequest(BaseModel):
-    model: str
-    data: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
-
-
-class ForecastResponse(BaseModel):
-    data: List[List[DATASET_VALUE]]
-
-
 @router.post('/forecast')
 async def forecast(forecast_request: ForecastRequest):
 
@@ -112,7 +109,6 @@ async def forecast(forecast_request: ForecastRequest):
     # Decode model from base64 ASCII, decompress, and final deserialize
     # model = pickle.loads(blosc.decompress(base64.b64decode(forecast_request.model)))
     model = ModelFactory.load(forecast_request.model)
-    # TODO Model currently does not support dates, array is converted into number of steps
     if isinstance(forecast_request.data[0], list):  # Forecast request has exogenous variables
         dataset = ModelFactory.prepare_dataset(pd.DataFrame(forecast_request.data))
         dates = []
