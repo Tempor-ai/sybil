@@ -16,7 +16,7 @@ class AbstractPreprocessor(ABC):
     """
 
     @abstractmethod
-    def fit(self, X: pd.DataFrame) -> None:
+    def fit(self, X: pd.DataFrame, y: pd.Series=None) -> None:
         """
         Fit the selected processor.
 
@@ -35,7 +35,7 @@ class AbstractPreprocessor(ABC):
         """
         pass
 
-    def fit_transform(self, X: pd.DataFrame) -> None:
+    def fit_transform(self, X: pd.DataFrame, y: pd.Series=None) -> None:
         """
         Fit and transform the input data according to the preprocessor logic.
 
@@ -46,7 +46,7 @@ class AbstractPreprocessor(ABC):
         return self.transform(X)
 
     @abstractmethod
-    def inverse_transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def inverse_transform(self, X: pd.DataFrame, y: pd.Series=None) -> pd.DataFrame:
         """
         Inverse transform the input data according to the preprocessor logic.
         :param X: Generic input data of shape (t, n).
