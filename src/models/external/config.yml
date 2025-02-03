@@ -1,9 +1,19 @@
-# Local
-# protocol: http
-# host: localhost
-# port: 8001
+# NeuralProphet Local
+# neuralprophet_protocol: http
+# neuralprophet_host: localhost
+# neuralprophet_port: 8001
 
-# PROD
-protocol: https
-host: neuralprophet.tempor.ai
-port: 443
+# NeuralProphet PROD
+neuralprophet_protocol: https
+neuralprophet_host: neuralprophet.tempor.ai
+neuralprophet_port: 443
+
+# DeepSYBIL Local
+deepsybil_protocol: http
+deepsybil_host: localhost
+deepsybil_port: 8001
+
+# DeepSYBIL PROD
+# deepsybil_protocol: https
+# deepsybil_host: neuralprophet.tempor.ai
+# deepsybil_port: 443

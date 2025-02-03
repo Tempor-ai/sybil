@@ -11,7 +11,8 @@ import pickle
 from typing import Union, List
 from .ts_utils import get_seasonal_period, smape, mape, mase
 from .preprocessor import MinMaxScaler, SimpleImputer, DartsImputer
-from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper,NeuralProphetWrapper, MetaModelWA, MetaModelLR, MetaModelNaive
+from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, NeuralProphetWrapper, DeepSYBILWrapper, \
+                           MetaModelWA, MetaModelLR, MetaModelNaive
 from .pipeline import ExternalPipeline, Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape, 'mase': mase}
@@ -26,7 +27,6 @@ META_PREPROCESSORS = [
     {'type': 'dartsimputer'},
     {'type': 'minmaxscaler'}
 ]
-
 DEFAULT_NP_BASE_MODELS = {
     "params": {
       "changepoints_range": 0.2,
@@ -36,6 +36,11 @@ DEFAULT_NP_BASE_MODELS = {
     "metrics": [],
     "type": "neuralprophet",
 }
+DEFAULT_DSYBIL_BASE_MODELS = {
+    ## TO-DO
+}
+
+
 class ModelFactory:
     """
     Factory class for creating models.
@@ -61,11 +66,11 @@ class ModelFactory:
             'darts_seasonalnaive': ('darts.models', 'NaiveSeasonal'),
             'darts_linearregression': ('darts.models', 'LinearRegressionModel'),
             'darts_tbats': ('darts.models', 'TBATS'),
-            'neuralprophet': ('models.external.onboard_neuralprophet', 'OnboardNeuralProphet'),
+            'neuralprophet': ('models.external.rest_models', 'OnboardNeuralProphet'),
             'darts_autoces': ('darts.models', 'StatsForecastAutoCES'),
             'darts_kalman': ('darts.models', 'KalmanForecaster'),
             'darts_catboost': ('darts.models', 'CatBoostModel'),
-            
+            'deepsybil': ('models.external.rest_models', 'DeepSYBIL'),
         }
 
         module_name, class_name = models[type]
@@ -74,7 +79,7 @@ class ModelFactory:
         return modelClass
 
     @staticmethod
-    def _create_meta_model(params: dict, type: str, dataset: pd.DataFrame, scorer_funcs: List[str], isExogenous: bool):
+    def _create_meta_model(params: dict, type: str, dataset: pd.DataFrame, scorer_funcs: List[str], is_exogenous: bool):
         """
         Helper method to create the predictor for a meta model.
         """
@@ -85,19 +90,19 @@ class ModelFactory:
         if params.get('preprocessors') is None:
             # If not custom preprocessors, use default META_PREPROCESSORS
             
-            predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
+            predictor = ModelClass(type=type, scorers=scorer_funcs, **params, is_exogenous=is_exogenous)
             params.setdefault('preprocessors', META_PREPROCESSORS)
         else:
             # Remove custom preprocessors for ModelClass, then add back
             preprocessors = params['preprocessors'].copy()
             del params['preprocessors']
             
-            predictor = ModelClass(type=type, scorers=scorer_funcs, **params, isExogenous=isExogenous)
+            predictor = ModelClass(type=type, scorers=scorer_funcs, **params, is_exogenous=is_exogenous)
             params.setdefault('preprocessors', preprocessors)
         return params, predictor
 
     @staticmethod
-    def _create_base_model(params: dict, type: str, dataset: pd.DataFrame, scorer_funcs: List[str], season_length:int, isExogenous: bool, external_params: dict = None):
+    def _create_base_model(params: dict, type: str, dataset: pd.DataFrame, scorer_funcs: List[str], season_length:int, is_exogenous: bool, external_params: dict = None):
         """
         Helper method to create the predictor for a base model.
         """
@@ -123,15 +128,32 @@ class ModelFactory:
         model_class = ModelFactory._get_model_class(type)
         wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
         model_instance = model_class(**params)
-        predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, isExogenous=isExogenous)
+        predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, is_exogenous=is_exogenous)
         
         if type == 'neuralprophet': 
             if external_params is None:
                 base_model_config = DEFAULT_NP_BASE_MODELS
             else:
                 base_model_config = external_params
-            model_instance = ModelFactory._get_model_class(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
-            predictor = NeuralProphetWrapper(neuralProphet_model=model_instance, type=type, scorers=scorer_funcs, base_model_config=base_model_config, isExogenous=isExogenous)
+                model_instance = ModelFactory._get_model_class(type=type) # not needed for season_length setted to auto in neuralprophet project, we can add the attribute when neuralprophet expose the config to the user.
+                predictor = NeuralProphetWrapper(
+                    neuralprophet_model=model_instance,
+                    type=type,
+                    scorers=scorer_funcs,
+                    base_model_config=base_model_config,
+                    is_exogenous=is_exogenous
+                )
+        elif type == 'deepsybil':  # TO-DO
+            if external_params is None:
+                base_model_config = DEFAULT_DSYBIL_BASE_MODELS  # TO-DO
+            else:
+                base_model_config = external_params
+                predictor = DeepSYBILWrapper(
+                    deepsybil_model=model_instance,
+                    type=type,
+                    scorers=scorer_funcs,
+                    base_model_config=base_model_config,
+                )
 
         return params, predictor
 
@@ -202,19 +224,19 @@ class ModelFactory:
         if params is None: params = {}
 
         if dataset.shape[1] > 1:  # Exogenous variables are present
-            isExogenous = True
+            is_exogenous = True
         else:
-            isExogenous = False
+            is_exogenous = False
 
         scorer_funcs = [SCORERS_DICT[s] for s in scorers]
         season_length = max(get_seasonal_period(dataset.iloc[:, -1]), 1)
 
         if type.startswith('meta_'):
             # Meta model case
-            params, predictor= ModelFactory._create_meta_model(params, type, dataset, scorer_funcs, isExogenous)
+            params, predictor = ModelFactory._create_meta_model(params,type, dataset, scorer_funcs, is_exogenous)
         else:
             # Base model case
-            params, predictor= ModelFactory._create_base_model(params, type, dataset, scorer_funcs, season_length, isExogenous, external_params)
+            params, predictor = ModelFactory._create_base_model(params, type, dataset, scorer_funcs, season_length, is_exogenous, external_params)
         
         # Base model case
         if params and 'preprocessors' in params:
