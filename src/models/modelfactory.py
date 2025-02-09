@@ -125,12 +125,18 @@ class ModelFactory:
         if type == 'darts_kalman':
             params.setdefault('dim_x', season_length)
 
-        model_class = ModelFactory._get_model_class(type)
-        wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
-        model_instance = model_class(**params)
-        predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, is_exogenous=is_exogenous)
-        
-        if type == 'neuralprophet': 
+        predictor = None
+        if type.startswith('stats_') or type.startswith('darts_'):
+            model_class = ModelFactory._get_model_class(type)
+            wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
+            model_instance = model_class(**params)
+            predictor = wrapper_class(
+                model=model_instance,
+                type=type,
+                scorers=scorer_funcs,
+                is_exogenous=is_exogenous
+            )    
+        elif type in 'neuralprophet': 
             if external_params is None:
                 base_model_config = DEFAULT_NP_BASE_MODELS
             else:
@@ -154,6 +160,8 @@ class ModelFactory:
                     scorers=scorer_funcs,
                     base_model_config=base_model_config,
                 )
+        else:
+            raise ValueError(f'Unknown model type: {type}')
 
         return params, predictor
 
