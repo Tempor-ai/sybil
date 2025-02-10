@@ -33,9 +33,13 @@ class rest_client:
         dataset = dataset[col_rename]
 
         # create the request json
+        train_data = []
+        for value in dataset.values:
+            train_data.append(list(value))
+
         api_json = {
-            'data': dataset.to_csv(index=False),
-            'model': base_model_request
+            'data': train_data,
+            'model': base_model_request  # (optional) can be commented out
         }
 
         # send the request
@@ -70,7 +74,7 @@ class rest_client:
 
         # create the request json
         api_json = {
-            'data': data.to_csv(index=False),
+            'data': data.values.tolist(),
             'model': model
         }
 
