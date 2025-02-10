@@ -83,9 +83,9 @@ class rest_client:
 
         #parse the response
         forecast_json_out = response.json()
-        
-        request_data = StringIO(forecast_json_out['forecast'])
-        forecast_df = pd.read_csv(request_data, sep=",")
+        forecast_data = forecast_json_out['forecast']
+        forecast_df = pd.DataFrame(forecast_data)
+        # forecast_df = pd.read_csv(request_data, sep=",")
         forecast_df = forecast_df.rename(columns={'ds': 'time'})
 
         #check of response is the same length as the input data
