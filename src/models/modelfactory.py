@@ -154,6 +154,7 @@ class ModelFactory:
                 base_model_config = DEFAULT_DSYBIL_BASE_MODELS  # TO-DO
             else:
                 base_model_config = external_params
+                model_instance = ModelFactory._get_model_class(type=type)
                 predictor = DeepSYBILWrapper(
                     deepsybil_model=model_instance,
                     type=type,
