@@ -15,7 +15,7 @@
 #     - type: darts_autoets
 
 # Customized model request
-type: meta_wa  # 'meta_naive', 'meta_lr'
+type: meta_lr  # 'meta_naive', 'meta_lr'
 scorers:
   - mase
   - smape
@@ -26,9 +26,9 @@ params:
   base_models:
     # - type: darts_naive
     # - type: darts_seasonalnaive
-    # - type: darts_autotheta
-    # - type: darts_autoets
-    # - type: darts_autoarima
+    - type: darts_autotheta
+    - type: darts_autoets
+    - type: darts_autoarima
     # - type: darts_tbats
     # - type: darts_linearregression
     # - type: darts_kalman
@@ -71,10 +71,10 @@ params:
             #     model: LSTM
             #     hidden_dim: 10
             #     n_rnn_layers: 3   
-            # - type: darts_nlinear
-            # - type: darts_dlinear 
+            - type: darts_nlinear
+            - type: darts_dlinear 
             # - type: darts_nbeats 
             # - type: darts_nhits
             # - type: darts_tcn 
-            - type: darts_tsmixer
+            # - type: darts_tsmixer
             # - type: darts_tide
