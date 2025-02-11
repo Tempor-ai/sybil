@@ -77,4 +77,4 @@ params:
             # - type: darts_nhits
             # - type: darts_tcn 
             - type: darts_tsmixer
-            - type: darts_tide
+            # - type: darts_tide

@@ -16,7 +16,7 @@ from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, Ne
 from .pipeline import ExternalPipeline, Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape, 'mase': mase}
-META_BASE_MODELS = [
+DEFAULT_BASE_MODELS = [
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
@@ -83,7 +83,7 @@ class ModelFactory:
         """
         Helper method to create the predictor for a meta model.
         """
-        base_models_kwargs = params.get('base_models', META_BASE_MODELS)
+        base_models_kwargs = params.get('base_models', DEFAULT_BASE_MODELS)
         params['base_models'] = [ModelFactory.create_model(dataset, **kws)
                                     for kws in base_models_kwargs]
         ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
