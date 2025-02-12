@@ -37,7 +37,45 @@ DEFAULT_NP_BASE_MODELS = {
     "type": "neuralprophet",
 }
 DEFAULT_DSYBIL_BASE_MODELS = {
-    ## TO-DO
+    'type': 'meta_wa',  # 'meta_naive', 'meta_wa'
+    'scorers': ['mase', 'smape'],
+    'params': {
+        'preprocessors': [
+            # {'type': 'dartsimputer'},
+            # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+            {'type': 'minmaxscaler'},
+        ],
+        'base_models': [
+            # {'type': 'darts_rnn',
+            #  'params': {
+            #      'model': 'LSTM',
+            #      'hidden_dim': 10,
+            #      'n_rnn_layers': 3
+            # }},
+            # {'type': 'darts_tcn',
+            #  'params': {
+            #      'output_chunk_length': 52,
+            #      'input_chunk_length': 104,                 
+            #      'n_epochs': 20,
+            # }},
+            # {'type': 'darts_rnn',
+            #  'params': {
+            #      'model': 'LSTM',
+            #      'hidden_dim': 10,
+            #      'n_rnn_layers': 3
+            # }},
+            {'type': 'darts_nlinear'},
+            {'type': 'darts_dlinear'},
+            # {'type': 'darts_blockrnn'},
+            # {'type': 'darts_tsmixer',
+            #  'params': {
+            #      'output_chunk_length': 52,
+            #      'input_chunk_length': 104,                 
+            #      'n_epochs': 20,
+            # }},
+            #  {'type': 'darts_tide'}
+        ],
+    },
 }
 
 
