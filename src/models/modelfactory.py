@@ -16,7 +16,7 @@ from .modelwrappers import AbstractModel, StatsforecastWrapper, DartsWrapper, Ne
 from .pipeline import ExternalPipeline, Pipeline
 
 SCORERS_DICT = {'smape': smape, 'mape': mape, 'mase': mase}
-META_BASE_MODELS = [
+DEFAULT_BASE_MODELS = [
     {'type': 'darts_autotheta'},
     {'type': 'darts_autoarima'},
     {'type': 'darts_autoets'},
@@ -37,7 +37,45 @@ DEFAULT_NP_BASE_MODELS = {
     "type": "neuralprophet",
 }
 DEFAULT_DSYBIL_BASE_MODELS = {
-    ## TO-DO
+    'type': 'meta_wa',  # 'meta_naive', 'meta_wa'
+    'scorers': ['mase', 'smape'],
+    'params': {
+        'preprocessors': [
+            # {'type': 'dartsimputer'},
+            # {'type': 'simpleimputer', 'params': {'strategy': 'mean'}},
+            {'type': 'minmaxscaler'},
+        ],
+        'base_models': [
+            # {'type': 'darts_rnn',
+            #  'params': {
+            #      'model': 'LSTM',
+            #      'hidden_dim': 10,
+            #      'n_rnn_layers': 3
+            # }},
+            # {'type': 'darts_tcn',
+            #  'params': {
+            #      'output_chunk_length': 52,
+            #      'input_chunk_length': 104,                 
+            #      'n_epochs': 20,
+            # }},
+            # {'type': 'darts_rnn',
+            #  'params': {
+            #      'model': 'LSTM',
+            #      'hidden_dim': 10,
+            #      'n_rnn_layers': 3
+            # }},
+            {'type': 'darts_nlinear'},
+            {'type': 'darts_dlinear'},
+            # {'type': 'darts_blockrnn'},
+            # {'type': 'darts_tsmixer',
+            #  'params': {
+            #      'output_chunk_length': 52,
+            #      'input_chunk_length': 104,                 
+            #      'n_epochs': 20,
+            # }},
+            #  {'type': 'darts_tide'}
+        ],
+    },
 }
 
 
@@ -83,7 +121,7 @@ class ModelFactory:
         """
         Helper method to create the predictor for a meta model.
         """
-        base_models_kwargs = params.get('base_models', META_BASE_MODELS)
+        base_models_kwargs = params.get('base_models', DEFAULT_BASE_MODELS)
         params['base_models'] = [ModelFactory.create_model(dataset, **kws)
                                     for kws in base_models_kwargs]
         ModelClass = MetaModelWA if type == 'meta_wa' else (MetaModelNaive if type == 'meta_naive' else MetaModelLR)
@@ -125,12 +163,18 @@ class ModelFactory:
         if type == 'darts_kalman':
             params.setdefault('dim_x', season_length)
 
-        model_class = ModelFactory._get_model_class(type)
-        wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
-        model_instance = model_class(**params)
-        predictor = wrapper_class(model=model_instance, type=type, scorers=scorer_funcs, is_exogenous=is_exogenous)
-        
-        if type == 'neuralprophet': 
+        predictor = None
+        if type.startswith('stats_') or type.startswith('darts_'):
+            model_class = ModelFactory._get_model_class(type)
+            wrapper_class = StatsforecastWrapper if type.startswith('stats_') else DartsWrapper
+            model_instance = model_class(**params)
+            predictor = wrapper_class(
+                model=model_instance,
+                type=type,
+                scorers=scorer_funcs,
+                is_exogenous=is_exogenous
+            )    
+        elif type in 'neuralprophet': 
             if external_params is None:
                 base_model_config = DEFAULT_NP_BASE_MODELS
             else:
@@ -148,12 +192,15 @@ class ModelFactory:
                 base_model_config = DEFAULT_DSYBIL_BASE_MODELS  # TO-DO
             else:
                 base_model_config = external_params
+                model_instance = ModelFactory._get_model_class(type=type)
                 predictor = DeepSYBILWrapper(
                     deepsybil_model=model_instance,
                     type=type,
                     scorers=scorer_funcs,
                     base_model_config=base_model_config,
                 )
+        else:
+            raise ValueError(f'Unknown model type: {type}')
 
         return params, predictor
 

@@ -34,9 +34,13 @@ class neuralprophet_rest_client:
         dataset = dataset[col_rename]
 
         # create the request json
+        train_data = []
+        for value in dataset.values:
+            train_data.append(list(value))
+
         api_json = {
-            'data': dataset.to_csv(index=False),
-            'model': base_model_request
+            'data': train_data,
+            'model': base_model_request  # (optional) can be commented out
         }
 
         # send the request
@@ -71,7 +75,7 @@ class neuralprophet_rest_client:
 
         # create the request json
         api_json = {
-            'data': data.to_csv(index=False),
+            'data': data.values.tolist(),
             'model': model
         }
 
@@ -80,9 +84,8 @@ class neuralprophet_rest_client:
 
         # parse the response
         forecast_json_out = response.json()
-        
-        request_data = StringIO(forecast_json_out['forecast'])
-        forecast_df = pd.read_csv(request_data, sep=",")
+        forecast_data = forecast_json_out['forecast']
+        forecast_df = pd.DataFrame(forecast_data)
         forecast_df = forecast_df.rename(columns={'ds': 'time'})
 
         # check of response is the same length as the input data
@@ -113,10 +116,23 @@ class deepsybil_rest_client:
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
 
+        # format the dataset
+        dataset.index = dataset.index.strftime('%Y-%m-%d')
+        dataset.reset_index(inplace=True)
+
+        dataset.rename(columns={dataset.columns[0]: 'ds', dataset.columns[-1]: 'y'}, inplace=True)
+        cols =  dataset.columns.tolist()
+        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
+        dataset = dataset[col_rename]
+
         # create the request json
+        train_data = []
+        for value in dataset.values:
+            train_data.append(list(value))
+
         api_json = {
-            'data': dataset.to_csv(index=False),
-            'model': base_model_request
+            'data': train_data,
+            'model': base_model_request  # (optional) can be commented out
         }
 
         # send the request
@@ -131,9 +147,9 @@ class deepsybil_rest_client:
         with open(config_file, 'r') as file:
             url_dict = yaml.safe_load(file)
 
-        protocol = url_dict['neuralprophet_protocol']
-        host = url_dict['neuralprophet_host']
-        port = url_dict['neuralprophet_port']
+        protocol = url_dict['deepsybil_protocol']
+        host = url_dict['deepsybil_host']
+        port = url_dict['deepsybil_port']
         endpoint = 'forecast'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
@@ -151,7 +167,7 @@ class deepsybil_rest_client:
 
         # create the request json
         api_json = {
-            'data': data.to_csv(index=False),
+            'data': data.values.tolist(),
             'model': model
         }
 
@@ -160,17 +176,12 @@ class deepsybil_rest_client:
 
         # parse the response
         forecast_json_out = response.json()
-        
-        request_data = StringIO(forecast_json_out['forecast'])
-        forecast_df = pd.read_csv(request_data, sep=",")
-        forecast_df = forecast_df.rename(columns={'ds': 'time'})
+        forecast_data = forecast_json_out['data']
 
-        # check of response is the same length as the input data
-        dataset.index = pd.to_datetime(dataset.index, infer_datetime_format=True)
-        forecast_df['time']= pd.to_datetime(forecast_df.time, infer_datetime_format=True)
-        forecast_df.set_index('time', inplace=True)
-        merged_df = dataset.join(forecast_df)
-        if (forecast_df.shape[0] != dataset.shape[0]):
-            merged_df = merged_df[['yhat1']].fillna(forecast_df['yhat1'].iloc[0])
-        merged_df.reset_index(inplace=True)
-        return merged_df['yhat1'].to_numpy()
+        # Convert to DataFrame
+        forecast_df = pd.DataFrame(forecast_data, columns=['time', 'forecast_value'])
+
+        # Convert 'time' column to datetime format
+        forecast_df['time'] = pd.to_datetime(forecast_df['time'])
+        
+        return forecast_df['forecast_value'].to_numpy()
