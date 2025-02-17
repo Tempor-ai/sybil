@@ -25,10 +25,10 @@ params:
     - type: minmaxscaler
   base_models:
     # - type: darts_naive
-    # - type: darts_seasonalnaive
-    - type: darts_autotheta
-    - type: darts_autoets
-    - type: darts_autoarima
+    # # - type: darts_seasonalnaive
+    # - type: darts_autotheta
+    # - type: darts_autoets
+    # - type: darts_autoarima
     # - type: darts_tbats
     # - type: darts_linearregression
     # - type: darts_kalman

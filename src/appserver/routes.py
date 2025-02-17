@@ -8,6 +8,8 @@ from typing import Union, List
 from pydantic import BaseModel
 from fastapi import APIRouter
 from fastapi.encoders import jsonable_encoder
+import yaml
+import requests
 
 from models.modelfactory import ModelFactory
 
@@ -95,6 +97,35 @@ async def train(train_request: TrainRequest):
     if len(metrics) == 0:
         metrics = None
 
+## MAUQ API CALL
+    yact=training_info['yact']
+    ypred=training_info['ypred']
+    mauq_df =pd.DataFrame({
+    'y_act': yact.values,
+    'y_pred': ypred.values
+    })
+
+    api_json = {
+        'data': mauq_df.values.tolist(),
+        'problem_type': 'regression',
+        'confidence_level': 0.7,
+        'output_type': 'data'
+    }
+    print(api_json)
+
+    # with open('mauq_url.yaml', 'r') as file:
+    #     url_dict = yaml.safe_load(file)
+    # URL to our MAUQ AWS service
+    protocol = 'http'
+    host = 'localhost'
+    port = 8001
+    endpoint = 'quantify-uncertainty'
+
+    url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
+    response = requests.post(url, json=api_json)
+    print(response.json())
+    
+
     # There is dynamacism in the metrics field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
@@ -122,7 +153,9 @@ async def forecast(forecast_request: ForecastRequest):
     num_steps = len(forecast_request.data)
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
     output['index'] = dates
+
     output = output.values.tolist()
+    
 
     return ForecastResponse(data=output)
 

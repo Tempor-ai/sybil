@@ -39,7 +39,7 @@ class AbstractModel(ABC):
         @return: A dictionary of scores.
         """
         y_pred = self.predict(lookforward=len(y), X=X)
-        return {scorer.__name__: scorer(y, y_pred, y_train) for scorer in self.scorers}
+        return {scorer.__name__: scorer(y, y_pred, y_train) for scorer in self.scorers},y_pred
 
     def plot_prediction(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         """
@@ -76,7 +76,9 @@ class AbstractModel(ABC):
         y_train, y_test, X_train, X_test = train_test_split(y, X, test_size=test_size, shuffle=False)
         print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
         self._train(y=y_train, X=X_train)
-        scores = self.score(y_test, X=X_test, y_train=y_train)
+        scores,y_pred = self.score(y_test, X=X_test, y_train=y_train)
+
+# MAUQ API
 
         self.train_idx = data.index
         print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
@@ -84,7 +86,9 @@ class AbstractModel(ABC):
 
         return {'model': self,
                 'type': self.type,
-                'metrics': scores
+                'metrics': scores,
+                'ypred' : y_pred,
+                'yact': y_test
                 }
 
     def predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> pd.Series:
