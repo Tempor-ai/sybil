@@ -46,6 +46,7 @@ class TrainResponse(BaseModel):
     model: str
     type: str
     metrics: Union[List[Metric], None] = None
+    estimate: float
 
 class ForecastRequest(BaseModel):
     model: str
@@ -107,9 +108,10 @@ async def train(train_request: TrainRequest):
 
     api_json = {
         'data': mauq_df.values.tolist(),
+        'test':mauq_df.values.tolist(),
         'problem_type': 'regression',
         'confidence_level': 0.7,
-        'output_type': 'data'
+        'output_type': 'estimate'
     }
     print(api_json)
 
@@ -129,7 +131,8 @@ async def train(train_request: TrainRequest):
     # There is dynamacism in the metrics field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
-                         metrics=metrics
+                         metrics=metrics,
+                         estimate=response.json()['output']
                          )
 
 @router.post('/forecast')
