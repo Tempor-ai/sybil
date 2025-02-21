@@ -51,6 +51,7 @@ class TrainResponse(BaseModel):
 class ForecastRequest(BaseModel):
     model: str
     data: Union[List[DATASET_VALUE], List[List[DATASET_VALUE]]]
+    estimate: float
 
 class ForecastResponse(BaseModel):
     data: List[List[DATASET_VALUE]]
@@ -113,7 +114,6 @@ async def train(train_request: TrainRequest):
         'confidence_level': 0.7,
         'output_type': 'estimate'
     }
-    print(api_json)
 
     # with open('mauq_url.yaml', 'r') as file:
     #     url_dict = yaml.safe_load(file)
@@ -125,9 +125,7 @@ async def train(train_request: TrainRequest):
 
     url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
     response = requests.post(url, json=api_json)
-    print(response.json())
     
-
     # There is dynamacism in the metrics field
     return TrainResponse(model=output_model,
                          type=training_info["type"],
@@ -157,6 +155,21 @@ async def forecast(forecast_request: ForecastRequest):
     output = model.predict(lookforward=num_steps, X=dataset).reset_index()
     output['index'] = dates
 
+    estimate=forecast_request.estimate
+    # Calling MAUQ Estimate to columns
+    api_json = {
+        'test': output.values.tolist(),
+        'estimate': estimate
+    }
+
+    protocol = 'http'
+    host = 'localhost'
+    port = 8001
+    endpoint = 'estimate to columns'
+
+    url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
+    response = requests.post(url, json=api_json)
+    output=pd.DataFrame(response.json()['output'])
     output = output.values.tolist()
     
 
