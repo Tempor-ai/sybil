@@ -78,18 +78,19 @@ class AbstractModel(ABC):
         self._train(y=y_train, X=X_train)
         scores,y_pred = self.score(y_test, X=X_test, y_train=y_train)
 
-# MAUQ API
+
 
         self.train_idx = data.index
         print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
         self._train(y=y, X=X)  # Refit with full data
 
-        return {'model': self,
-                'type': self.type,
-                'metrics': scores,
-                'ypred' : y_pred,
-                'yact': y_test
-                }
+        return {
+            'model': self,
+            'type': self.type,
+            'metrics': scores,
+            'ypred': pd.Series(y_pred),
+            'yact': y_test
+        }
 
     def predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> pd.Series:
         """

@@ -78,3 +78,7 @@ params:
             # - type: darts_tcn 
             # - type: darts_tsmixer
             # - type: darts_tide
+mauq_params:
+  problem_type: regression
+  confidence_level : 0.9
+  output_type: estimate

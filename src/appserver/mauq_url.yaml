@@ -1,7 +1,7 @@
 #MAUQ Local
-protocol: http
-host: localhost
-port: 8001
+# protocol: http
+# host: localhost
+# port: 8001
 
 # MAUQ UAT
 # protocol: https
@@ -9,6 +9,6 @@ port: 8001
 # port: 443
 
 # MAUQ PROD
-# protocol: https
-# host: mauq.tempor.ai
-# port: 443
+protocol: https
+host: mauq.tempor.ai
+port: 443

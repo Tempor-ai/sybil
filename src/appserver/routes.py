@@ -12,7 +12,7 @@ import yaml
 import requests
 from typing import Optional
 from models.modelfactory import ModelFactory
-
+import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -121,12 +121,15 @@ async def train(train_request: TrainRequest):
             'confidence_level': confidence_level,
             'output_type': 'estimate'
         }
+        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        mauq_config_file=os.path.join(filePath, 'mauq_url.yaml') 
 
-        protocol = 'http'
-        host = 'localhost'
-        port = 8001
+        with open(mauq_config_file, 'r') as file:
+            url_dict = yaml.safe_load(file)
+        protocol = url_dict['protocol']  
+        host = url_dict['host']
+        port = url_dict['port']
         endpoint = 'quantify-uncertainty'
-
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
         response = requests.post(url, json=api_json)
         
@@ -172,9 +175,14 @@ async def forecast(forecast_request: ForecastRequest):
             'estimate': estimate
         }
 
-        protocol = 'http'
-        host = 'localhost'
-        port = 8001
+        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        mauq_config_file=os.path.join(filePath, 'mauq_url.yaml') 
+
+        with open(mauq_config_file, 'r') as file:
+            url_dict = yaml.safe_load(file)
+        protocol = url_dict['protocol']  # protocol
+        host = url_dict['host']
+        port = url_dict['port']
         endpoint = 'estimate-to-columns'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
