@@ -121,14 +121,14 @@ async def train(train_request: TrainRequest):
             'confidence_level': confidence_level,
             'output_type': 'estimate'
         }
-        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        mauq_config_file=os.path.join(filePath, 'mauq_url.yaml') 
+        file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'external'))
+        config_file=os.path.join(file_path, 'config.yml') 
 
-        with open(mauq_config_file, 'r') as file:
+        with open(config_file, 'r') as file:
             url_dict = yaml.safe_load(file)
-        protocol = url_dict['protocol']  
-        host = url_dict['host']
-        port = url_dict['port']
+        protocol = url_dict['mauq_protocol']  
+        host = url_dict['mauq_host']
+        port = url_dict['mauq_port']
         endpoint = 'quantify-uncertainty'
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
         response = requests.post(url, json=api_json)
@@ -175,14 +175,14 @@ async def forecast(forecast_request: ForecastRequest):
             'estimate': estimate
         }
 
-        filePath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        mauq_config_file=os.path.join(filePath, 'mauq_url.yaml') 
+        file_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'models', 'external'))
+        config_file=os.path.join(file_path, 'config.yml') 
 
-        with open(mauq_config_file, 'r') as file:
+        with open(config_file, 'r') as file:
             url_dict = yaml.safe_load(file)
-        protocol = url_dict['protocol']  # protocol
-        host = url_dict['host']
-        port = url_dict['port']
+        protocol = url_dict['mauq_protocol']  
+        host = url_dict['mauq_host']
+        port = url_dict['mauq_port']        
         endpoint = 'estimate-to-columns'
 
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)

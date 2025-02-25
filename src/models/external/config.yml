@@ -17,3 +17,18 @@ neuralprophet_port: 443
 deepsybil_protocol: https
 deepsybil_host: dsybil.tempor.ai
 deepsybil_port: 443
+
+#MAUQ Local
+# protocol: http
+# host: localhost
+# port: 8001
+
+# MAUQ UAT
+# protocol: https
+# host: mauq-test.tempor.ai
+# port: 443
+
+# MAUQ PROD
+mauq_protocol: https
+mauq_host: mauq.tempor.ai
+mauq_port: 443
