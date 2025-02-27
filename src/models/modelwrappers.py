@@ -24,11 +24,11 @@ class AbstractModel(ABC):
     @param type: The type of the model, also used to build a new model from the Factory.
     @param scorers: A list of scorers to use for evaluating metrics.
     """
-    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], isExogenous:bool = False):
+    def __init__(self, type: str,  scorers: Union[METRIC_TYPE, List[METRIC_TYPE]], is_exogenous:bool = False):
         self.type = type
         self.scorers = scorers if isinstance(scorers, list) else [scorers]
         self.train_idx = None
-        self.isExogenous = isExogenous
+        self.is_exogenous = is_exogenous
 
     def score(self, y: pd.Series, X: pd.DataFrame=None, y_train: pd.Series=None) -> dict:
         """
@@ -39,7 +39,7 @@ class AbstractModel(ABC):
         @return: A dictionary of scores.
         """
         y_pred = self.predict(lookforward=len(y), X=X)
-        return {scorer.__name__: scorer(y, y_pred, y_train) for scorer in self.scorers}
+        return {scorer.__name__: scorer(y, y_pred, y_train) for scorer in self.scorers},y_pred
 
     def plot_prediction(self, y: pd.Series, X: pd.DataFrame=None) -> None:
         """
@@ -76,16 +76,21 @@ class AbstractModel(ABC):
         y_train, y_test, X_train, X_test = train_test_split(y, X, test_size=test_size, shuffle=False)
         print(f"Training model {self.type} on {len(y_train)} samples. (TRAIN DATA)")
         self._train(y=y_train, X=X_train)
-        scores = self.score(y_test, X=X_test, y_train=y_train)
+        scores,y_pred = self.score(y_test, X=X_test, y_train=y_train)
+
+
 
         self.train_idx = data.index
         print(f"Training model {self.type} on {len(y)} samples. (FULL DATA)")
         self._train(y=y, X=X)  # Refit with full data
 
-        return {'model': self,
-                'type': self.type,
-                'metrics': scores
-                }
+        return {
+            'model': self,
+            'type': self.type,
+            'metrics': scores,
+            'ypred': pd.Series(y_pred),
+            'yact': y_test
+        }
 
     def predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> pd.Series:
         """
@@ -104,7 +109,7 @@ class AbstractModel(ABC):
         return y_pred
 
     def isExternalModel(self):
-        if self.type == 'neuralprophet':
+        if self.type in ['neuralprophet', 'deepsybil']:
             return True
         else:
             return False
@@ -140,13 +145,13 @@ class StatsforecastWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame=None) -> None:
-        X = None if self.isExogenous is False else X
+        X = None if self.is_exogenous is False else X
         y_val = y.values
         X_val = None if X is None else X.values
         self.model.fit(y=y_val, X=X_val)
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
-        X = None if self.isExogenous is False else X
+        X = None if self.is_exogenous is False else X
         X_val = None if X is None else X.values
         return self.model.predict(h=lookforward, X=X_val)['mean']
 
@@ -160,12 +165,12 @@ class DartsWrapper(AbstractModel):
         super().__init__(*args, **kwargs)
 
     def _train(self, y: pd.Series, X: pd.DataFrame = None) -> None:
-        if self.isExogenous and self.type == 'darts_autoarima':
+        if self.is_exogenous and self.type == 'darts_autoarima':
             # print("Performing univariate analysis as model is auto_arima.")
             y_time_series = TimeSeries.from_series(y)
             self.model.fit(y_time_series)
         else:
-            X = None if self.isExogenous is False else X
+            X = None if self.is_exogenous is False else X
             y_time_series = TimeSeries.from_series(y)
             if X is not None and has_argument(self.model.fit, 'future_covariates'):
                 X_time_series = TimeSeries.from_dataframe(X)
@@ -174,11 +179,11 @@ class DartsWrapper(AbstractModel):
                 self.model.fit(y_time_series)
 
     def _predict(self, lookforward: int = 1, X: pd.DataFrame = None) -> np.ndarray:
-        if self.isExogenous and self.type == 'darts_autoarima':
+        if self.is_exogenous and self.type == 'darts_autoarima':
             # print("Performing univariate analysis as model is auto_arima.")
             y_ts = self.model.predict(n=lookforward)
         else:
-            X = None if self.isExogenous is False else X
+            X = None if self.is_exogenous is False else X
             if X is not None and has_argument(self.model.fit, 'future_covariates'):
                 X_ts = TimeSeries.from_dataframe(X)
                 y_ts = self.model.predict(n=lookforward, future_covariates=X_ts)
@@ -188,19 +193,36 @@ class DartsWrapper(AbstractModel):
 
 class NeuralProphetWrapper(AbstractModel):
     """
-    Wrapper for neuralProphet models according to the AbstractExternalModel interface.
+    Wrapper for NeuralProphet models according to the AbstractExternalModel interface.
     """
-    def __init__(self, neuralProphet_model, base_model_config, *args, **kwargs):
-        self.neuralProphet_model = neuralProphet_model
+    def __init__(self, neuralprophet_model, base_model_config, *args, **kwargs):
+        self.neuralprophet_model = neuralprophet_model
         self.base_model_config = base_model_config
         super().__init__(*args, **kwargs)
 
     def _train(self, data: pd.DataFrame, external_base_model_config) -> None:
-        model = self.neuralProphet_model.fit(dataset=data, base_model_request=external_base_model_config)
+        model = self.neuralprophet_model.fit(dataset=data, base_model_request=external_base_model_config)
         self.model = model
 
     def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
-        y_ts = self.neuralProphet_model.predict(data=X, model=self.model)
+        y_ts = self.neuralprophet_model.predict(data=X, model=self.model)
+        return y_ts
+
+class DeepSYBILWrapper(AbstractModel):
+    """
+    Wrapper for Deep SYBIL models according to the AbstractExternalModel interface.
+    """
+    def __init__(self, deepsybil_model, base_model_config, *args, **kwargs):
+        self.deepsybil_model = deepsybil_model
+        self.base_model_config = base_model_config
+        super().__init__(*args, **kwargs)
+
+    def _train(self, data: pd.DataFrame, external_base_model_config) -> None:
+        model = self.deepsybil_model.fit(dataset=data, base_model_request=external_base_model_config)
+        self.model = model
+
+    def _predict(self, lookforward: int=1, X: pd.DataFrame=None)-> np.ndarray:
+        y_ts = self.deepsybil_model.predict(data=X, model=self.model)
         return y_ts
 
 class MetaModelWA(AbstractModel):

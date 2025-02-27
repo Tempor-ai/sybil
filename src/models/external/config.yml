@@ -1,9 +1,34 @@
-# Local
+# NeuralProphet Local
+# neuralprophet_protocol: http
+# neuralprophet_host: localhost
+# neuralprophet_port: 8001
+
+# NeuralProphet PROD
+neuralprophet_protocol: https
+neuralprophet_host: neuralprophet.tempor.ai
+neuralprophet_port: 443
+
+# Deep SYBIL Local
+# deepsybil_protocol: http
+# deepsybil_host: localhost
+# deepsybil_port: 8001
+
+# Deep SYBIL PROD
+deepsybil_protocol: https
+deepsybil_host: dsybil.tempor.ai
+deepsybil_port: 443
+
+#MAUQ Local
 # protocol: http
 # host: localhost
 # port: 8001
 
-# PROD
-protocol: https
-host: neuralprophet.tempor.ai
-port: 443
+# MAUQ UAT
+# protocol: https
+# host: mauq-test.tempor.ai
+# port: 443
+
+# MAUQ PROD
+mauq_protocol: https
+mauq_host: mauq.tempor.ai
+mauq_port: 443
