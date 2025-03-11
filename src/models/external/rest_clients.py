@@ -117,7 +117,11 @@ class deepsybil_rest_client:
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
 
         # format the dataset
-        dataset.index = dataset.index.strftime('%Y-%m-%d')
+        if dataset.index[0].time() == pd.to_datetime('00:00:00').time():
+            dataset.index = dataset.index.strftime('%Y-%m-%d')  # Only date
+        else:
+            dataset.index = dataset.index.strftime('%Y-%m-%d %H:%M:%S')
+        # dataset.index = dataset.index.strftime('%Y-%m-%d')
         dataset.reset_index(inplace=True)
 
         dataset.rename(columns={dataset.columns[0]: 'ds', dataset.columns[-1]: 'y'}, inplace=True)
@@ -155,7 +159,11 @@ class deepsybil_rest_client:
         url = '%s://%s:%s/%s' % (protocol, host, str(port), endpoint)
 
         # format the dataset
-        dataset.index = dataset.index.strftime('%Y-%m-%d')
+        if dataset.index[0].time() == pd.to_datetime('00:00:00').time():
+            dataset.index = dataset.index.strftime('%Y-%m-%d')  # Only date
+        else:
+            dataset.index = dataset.index.strftime('%Y-%m-%d %H:%M:%S')
+        # dataset.index = dataset.index.strftime('%Y-%m-%d')
         data = dataset.reset_index()
 
         data.rename(columns={data.columns[0]: 'ds'}, inplace=True)
