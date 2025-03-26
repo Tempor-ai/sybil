@@ -126,9 +126,7 @@ class deepsybil_rest_client:
 
         dataset.rename(columns={dataset.columns[0]: 'ds', dataset.columns[-1]: 'y'}, inplace=True)
         cols =  dataset.columns.tolist()
-        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
-        dataset = dataset[col_rename]
-
+        
         # create the request json
         train_data = []
         for value in dataset.values:
@@ -170,9 +168,7 @@ class deepsybil_rest_client:
         data["y"] = 1
         
         cols =  data.columns.tolist()
-        col_rename=cols[:1] + cols[-1:] + cols[1:-1] 
-        data = data[col_rename]
-
+        
         # create the request json
         api_json = {
             'data': data.values.tolist(),
