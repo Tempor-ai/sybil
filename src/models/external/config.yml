@@ -19,9 +19,9 @@ deepsybil_host: dsybil.tempor.ai
 deepsybil_port: 443
 
 #MAUQ Local
-# protocol: http
-# host: localhost
-# port: 8001
+# mauq_protocol: http
+# mauq_host: localhost
+# mauq_port: 8002
 
 # MAUQ UAT
 # protocol: https

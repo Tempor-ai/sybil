@@ -28,7 +28,7 @@ params:
     # # - type: darts_seasonalnaive
     # - type: darts_autotheta
     # - type: darts_autoets
-    # - type: darts_autoarima
+    - type: darts_autoarima
     # - type: darts_tbats
     # - type: darts_linearregression
     # - type: darts_kalman
@@ -71,14 +71,14 @@ params:
             #     model: LSTM
             #     hidden_dim: 10
             #     n_rnn_layers: 3   
-            - type: darts_nlinear
-            - type: darts_dlinear 
+            # - type: darts_nlinear
+            # - type: darts_dlinear 
             # - type: darts_nbeats 
-            # - type: darts_nhits
+            - type: darts_nhits
             # - type: darts_tcn 
             # - type: darts_tsmixer
             # - type: darts_tide
 mauq_params:
   problem_type: regression
-  confidence_level : 0.9
+  confidence_level : 0.5
   output_type: estimate
