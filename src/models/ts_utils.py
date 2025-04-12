@@ -102,25 +102,45 @@ def mape(y_true, y_pred, y_train=None):
 
     return mape
 
+import numpy as np
 
-def mase(y_true, y_pred, y_train):
+def mase(y_true, y_pred, y_train, epsilon=1e-10):
     """
-    Calculate the MASE (Mean Absolute Scaled Error) between the true values and predicted values.
-    :param y_true: numpy array or list, representing the true values
-    :param y_pred: numpy array or list, representing the predicted values
-    :param y_train: numpy array or list, representing the historical training values
-    :return: float, MASE value
+    Calculate the multi-step MASE (Mean Absolute Scaled Error) between the true values and predicted values.
+    
+    For multi-step forecasting, the naive forecast is defined such that:
+      naive_forecast for h-steps ahead = y_train[t],
+    and the error is computed as the difference between y_train[t+H] and y_train[t].
+    
+    :param y_true: numpy array or list, true values for the forecast horizon.
+    :param y_pred: numpy array or list, predicted values for the forecast horizon.
+    :param y_train: numpy array or list, historical training values.
+    :param epsilon: small constant to avoid division by zero.
+    :return: float, MASE value.
     """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
     y_train = np.array(y_train)
 
-    training_error = np.mean(np.abs(y_train[1:] - y_train[:-1]))
+    # Define forecast horizon   H from the length of the forecast vector
+    H = len(y_pred)
+    
+    # Compute naive multi-step error on training data.
+    # For t=0,...,L-H-1, compare y_train[t] with y_train[t+H].
+    if len(y_train) <= H:
+        raise ValueError("Length of training data must be greater than the forecast horizon.")
+    
+    # naive_error = np.mean(np.abs(y_train[:-H] - y_train[H:]))
+    naive_error = np.mean(np.abs(y_train[-1] - y_true))
+    
+    # Compute forecast error on the forecast horizon.
     forecast_error = np.mean(np.abs(y_true - y_pred))
+    
+    # Calculate MASE.
+    mase_value = forecast_error / (naive_error + epsilon)
+    
+    return mase_value
 
-    mase = forecast_error / (training_error+epsilon)
-
-    return mase
 
 
 def plot_forecast(actual_data, forecast):
