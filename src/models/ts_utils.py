@@ -122,14 +122,7 @@ def mase(y_true, y_pred, y_train, epsilon=1e-10):
     y_pred = np.array(y_pred)
     y_train = np.array(y_train)
 
-    # Define forecast horizon   H from the length of the forecast vector
-    H = len(y_pred)
-    
-    # Compute naive multi-step error on training data.
-    # For t=0,...,L-H-1, compare y_train[t] with y_train[t+H].
-    if len(y_train) <= H:
-        raise ValueError("Length of training data must be greater than the forecast horizon.")
-    
+    # Computing multistep error for naive forecast
     # naive_error = np.mean(np.abs(y_train[:-H] - y_train[H:]))
     naive_error = np.mean(np.abs(y_train[-1] - y_true))
     
